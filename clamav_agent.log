@@ -1,0 +1,99 @@
+2025-06-28 17:08:53,159 - INFO - Created temporary scan directory: temp_scans
+2025-06-28 17:08:53,169 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-28 17:11:05,185 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-28 17:11:28,513 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-28 17:13:14,909 - INFO - Accepted connection from ('127.0.0.1', 59992)
+2025-06-28 17:13:15,217 - ERROR - An error occurred with client ('127.0.0.1', 59992): not enough values to unpack (expected 2, got 1)
+2025-06-28 17:13:15,219 - INFO - Connection with ('127.0.0.1', 59992) closed.
+2025-06-28 17:17:12,793 - INFO - Accepted connection from ('127.0.0.1', 60165)
+2025-06-28 17:17:12,794 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 60165)
+2025-06-28 17:17:12,816 - INFO - File 'safe_document.txt' received successfully.
+2025-06-28 17:17:12,819 - INFO - Scanning file: temp_scans\safe_document.txt
+2025-06-28 17:17:12,819 - INFO - SIMULATED: Scan clean for temp_scans\safe_document.txt
+2025-06-28 17:17:12,820 - INFO - Sent result 'OK' to ('127.0.0.1', 60165)
+2025-06-28 17:17:12,820 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-06-28 17:17:12,821 - INFO - Connection with ('127.0.0.1', 60165) closed.
+2025-06-28 17:18:18,366 - INFO - Accepted connection from ('127.0.0.1', 60190)
+2025-06-28 17:18:18,366 - INFO - Receiving file 'my_virus_file.txt' (68 bytes) from ('127.0.0.1', 60190)
+2025-06-28 17:18:18,366 - INFO - File 'my_virus_file.txt' received successfully.
+2025-06-28 17:18:18,366 - INFO - Scanning file: temp_scans\my_virus_file.txt
+2025-06-28 17:18:18,371 - WARNING - SIMULATED: Virus found in temp_scans\my_virus_file.txt
+2025-06-28 17:18:18,371 - INFO - Sent result 'INFECTED' to ('127.0.0.1', 60190)
+2025-06-28 17:18:18,372 - INFO - Cleaned up temporary file: temp_scans\my_virus_file.txt
+2025-06-28 17:18:18,372 - INFO - Connection with ('127.0.0.1', 60190) closed.
+2025-06-30 16:18:53,345 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-30 16:26:59,483 - INFO - Accepted connection from ('127.0.0.1', 53159)
+2025-06-30 16:26:59,797 - INFO - Receiving file 'my_virus_file.txt' (68 bytes) from ('127.0.0.1', 53159)
+2025-06-30 16:26:59,821 - INFO - File 'my_virus_file.txt' received successfully.
+2025-06-30 16:26:59,821 - INFO - Scanning file: temp_scans\my_virus_file.txt
+2025-06-30 16:26:59,917 - WARNING - Scan result for temp_scans\my_virus_file.txt: INFECTED
+
+2025-06-30 16:26:59,917 - INFO - Sent result 'INFECTED' to ('127.0.0.1', 53159)
+2025-06-30 16:26:59,917 - INFO - Cleaned up temporary file: temp_scans\my_virus_file.txt
+2025-06-30 16:26:59,917 - INFO - Connection with ('127.0.0.1', 53159) closed.
+2025-06-30 16:30:44,817 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-30 16:30:48,756 - INFO - Accepted connection from ('127.0.0.1', 53191)
+2025-06-30 16:30:48,756 - INFO - Receiving file 'my_virus_file.txt' (68 bytes) from ('127.0.0.1', 53191)
+2025-06-30 16:30:48,757 - INFO - File 'my_virus_file.txt' received successfully.
+2025-06-30 16:30:48,757 - INFO - Scanning file: temp_scans\my_virus_file.txt
+2025-06-30 16:30:48,787 - WARNING - Scan result for temp_scans\my_virus_file.txt: INFECTED
+
+2025-06-30 16:30:48,788 - INFO - Sent result 'INFECTED' to ('127.0.0.1', 53191)
+2025-06-30 16:30:48,788 - INFO - Cleaned up temporary file: temp_scans\my_virus_file.txt
+2025-06-30 16:30:48,788 - INFO - Connection with ('127.0.0.1', 53191) closed.
+2025-06-30 16:31:46,647 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-30 16:31:52,588 - INFO - Accepted connection from ('127.0.0.1', 53221)
+2025-06-30 16:31:52,588 - INFO - Receiving file 'my_virus_file.txt' (68 bytes) from ('127.0.0.1', 53221)
+2025-06-30 16:31:52,588 - INFO - File 'my_virus_file.txt' received successfully.
+2025-06-30 16:31:52,588 - INFO - Scanning file: temp_scans\my_virus_file.txt
+2025-06-30 16:31:52,619 - WARNING - Scan result for temp_scans\my_virus_file.txt: INFECTED
+
+2025-06-30 16:31:52,619 - INFO - Sent result 'INFECTED' to ('127.0.0.1', 53221)
+2025-06-30 16:31:52,619 - INFO - Cleaned up temporary file: temp_scans\my_virus_file.txt
+2025-06-30 16:31:52,619 - INFO - Connection with ('127.0.0.1', 53221) closed.
+2025-06-30 16:32:29,028 - INFO - Accepted connection from ('127.0.0.1', 53228)
+2025-06-30 16:32:29,028 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 53228)
+2025-06-30 16:32:29,038 - INFO - File 'safe_document.txt' received successfully.
+2025-06-30 16:32:29,038 - INFO - Scanning file: temp_scans\safe_document.txt
+2025-06-30 16:32:29,072 - WARNING - Scan result for temp_scans\safe_document.txt: INFECTED
+
+2025-06-30 16:32:29,073 - INFO - Sent result 'INFECTED' to ('127.0.0.1', 53228)
+2025-06-30 16:32:29,073 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-06-30 16:32:29,073 - INFO - Connection with ('127.0.0.1', 53228) closed.
+2025-06-30 16:41:15,804 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-30 16:41:19,690 - INFO - Accepted connection from ('127.0.0.1', 53296)
+2025-06-30 16:41:19,690 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 53296)
+2025-06-30 16:41:19,690 - INFO - File 'safe_document.txt' received successfully.
+2025-06-30 16:41:19,690 - INFO - Running clamscan on: temp_scans\safe_document.txt
+2025-06-30 16:41:19,728 - ERROR - Clamscan failed with error code 2 for file temp_scans\safe_document.txt.
+2025-06-30 16:41:19,730 - ERROR - Clamscan stderr: LibClamAV Error: cl_load(): No such file or directory: D:\Apps\ClamAV\database
+ERROR: Can't get file status
+2025-06-30 16:41:19,730 - INFO - Sent result 'ERROR: Scan failed' to ('127.0.0.1', 53296)
+2025-06-30 16:41:19,730 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-06-30 16:41:19,730 - INFO - Connection with ('127.0.0.1', 53296) closed.
+2025-06-30 16:54:33,809 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-06-30 16:54:37,226 - INFO - Accepted connection from ('127.0.0.1', 53381)
+2025-06-30 16:54:37,226 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 53381)
+2025-06-30 16:54:37,226 - INFO - File 'safe_document.txt' received successfully.
+2025-06-30 16:54:37,226 - INFO - Running clamscan on: temp_scans\safe_document.txt
+2025-06-30 16:54:56,312 - INFO - Scan result for temp_scans\safe_document.txt: OK
+2025-06-30 16:54:56,312 - INFO - Sent result 'OK' to ('127.0.0.1', 53381)
+2025-06-30 16:54:56,312 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-06-30 16:54:56,312 - INFO - Connection with ('127.0.0.1', 53381) closed.
+2025-06-30 16:55:16,034 - INFO - Accepted connection from ('127.0.0.1', 53384)
+2025-06-30 16:55:16,034 - INFO - Receiving file 'my_virus_file.txt' (68 bytes) from ('127.0.0.1', 53384)
+2025-06-30 16:55:16,034 - INFO - File 'my_virus_file.txt' received successfully.
+2025-06-30 16:55:16,034 - INFO - Running clamscan on: temp_scans\my_virus_file.txt
+2025-06-30 16:55:34,765 - INFO - Scan result for temp_scans\my_virus_file.txt: OK
+2025-06-30 16:55:34,765 - INFO - Sent result 'OK' to ('127.0.0.1', 53384)
+2025-06-30 16:55:34,765 - INFO - Cleaned up temporary file: temp_scans\my_virus_file.txt
+2025-06-30 16:55:34,765 - INFO - Connection with ('127.0.0.1', 53384) closed.
+2025-07-01 14:44:54,435 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-07-01 14:47:27,370 - INFO - Accepted connection from ('127.0.0.1', 63648)
+2025-07-01 14:47:27,370 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 63648)
+2025-07-01 14:47:27,371 - INFO - File 'safe_document.txt' received successfully.
+2025-07-01 14:47:27,372 - INFO - Running clamscan on: temp_scans\safe_document.txt
+2025-07-01 14:47:27,375 - ERROR - `clamscan` command not found. Please ensure ClamAV is installed and in your system's PATH.
+2025-07-01 14:47:27,378 - INFO - Sent result 'ERROR: clamscan not found' to ('127.0.0.1', 63648)
+2025-07-01 14:47:27,378 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-07-01 14:47:27,380 - INFO - Connection with ('127.0.0.1', 63648) closed.
