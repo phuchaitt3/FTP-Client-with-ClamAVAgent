@@ -97,3 +97,21 @@ ERROR: Can't get file status
 2025-07-01 14:47:27,378 - INFO - Sent result 'ERROR: clamscan not found' to ('127.0.0.1', 63648)
 2025-07-01 14:47:27,378 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
 2025-07-01 14:47:27,380 - INFO - Connection with ('127.0.0.1', 63648) closed.
+2025-07-01 20:03:17,836 - INFO - Created temporary scan directory: temp_scans
+2025-07-01 20:03:17,836 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-07-01 20:03:57,786 - INFO - Accepted connection from ('127.0.0.1', 51013)
+2025-07-01 20:03:57,786 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 51013)
+2025-07-01 20:03:57,786 - INFO - File 'safe_document.txt' received successfully.
+2025-07-01 20:03:57,786 - INFO - Running clamscan on: temp_scans\safe_document.txt
+2025-07-01 20:03:57,786 - ERROR - `clamscan` command not found. Please ensure ClamAV is installed and in your system's PATH.
+2025-07-01 20:03:57,786 - INFO - Sent result 'ERROR: clamscan not found' to ('127.0.0.1', 51013)
+2025-07-01 20:03:57,786 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-07-01 20:03:57,786 - INFO - Connection with ('127.0.0.1', 51013) closed.
+2025-07-01 20:04:54,264 - INFO - Accepted connection from ('127.0.0.1', 51049)
+2025-07-01 20:04:54,265 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 51049)
+2025-07-01 20:04:54,265 - INFO - File 'safe_document.txt' received successfully.
+2025-07-01 20:04:54,265 - INFO - Running clamscan on: temp_scans\safe_document.txt
+2025-07-01 20:04:54,265 - ERROR - `clamscan` command not found. Please ensure ClamAV is installed and in your system's PATH.
+2025-07-01 20:04:54,265 - INFO - Sent result 'ERROR: clamscan not found' to ('127.0.0.1', 51049)
+2025-07-01 20:04:54,272 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-07-01 20:04:54,272 - INFO - Connection with ('127.0.0.1', 51049) closed.
