@@ -14,17 +14,12 @@ class FTPClient:
         self.prompt = True
 
     def connect(self, host, port=21):
-        import getpass
         try:
             self.ftp = FTP_TLS()
-            self.ftp.set_debuglevel(2)  # Bật debug log
-
+            user = input("Username: ")
+            passwd = input("Password: ")
             self.ftp.connect(host, port)
             self.ftp.auth()
-
-            user = input("Username: ")
-            passwd = getpass.getpass("Password: ")
-
             self.ftp.login(user=user, passwd=passwd)
             self.ftp.prot_p()
             self.ftp.set_pasv(self.passive_mode)
