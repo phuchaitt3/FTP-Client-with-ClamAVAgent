@@ -13,22 +13,7 @@ class FTPClient:
         self.transfer_mode = 'binary'
         self.prompt = True
 
-    def _reset_connection(self):
-        """Resets the connection object after a fatal error."""
-        print("[INFO] Connection was closed or has been lost. Resetting.")
-        if self.ftp:
-            try:
-                # Unilaterally close the connection without sending QUIT
-                self.ftp.close()
-            except Exception as e:
-                # Ignore errors during close, as the connection is likely already dead
-                pass
-        self.ftp = None
-
     def connect(self, host, port=21):
-        if self.ftp:
-            print("An existing connection is active. Please 'close' it first.")
-            return
         try:
             self.ftp = FTP_TLS()
             user = input("Username: ")
@@ -40,27 +25,15 @@ class FTPClient:
             self.ftp.set_pasv(self.passive_mode)
 
             print(f"Connected securely to {host}:{port} as {user}")
-        except ftplib.error_perm as e:
+        except error_perm as e:
             print(f"[AUTH ERROR] {e}")
-            self._reset_connection()
         except Exception as e:
             print(f"[ERROR] {e}")
-            self._reset_connection()
 
     def disconnect(self):
         if self.ftp:
-            try:
-                # Politely ask the server to close the connection
-                self.ftp.quit()
-                print("Disconnected from server.")
-            except Exception as e:
-                # If quit fails, the connection is likely already broken
-                print(f"[INFO] Quit command failed ({e}), closing connection forcibly.")
-                self.ftp.close()
-            finally:
-                 self.ftp = None
-        else:
-            print("Not connected.")
+            self.ftp.quit()
+            print("Disconnected from server.")
 
     def status(self):
         print("Passive Mode:", self.passive_mode)
@@ -86,312 +59,225 @@ class FTPClient:
         print(f"Passive mode {'enabled' if self.passive_mode else 'disabled'}")
 
     def ls(self):
-        if not self.ftp:
-            print("Not connected.")
-            return
-        try:
-            self.ftp.retrlines('LIST')
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost: {e}")
-            self._reset_connection()
+        self.ftp.retrlines('LIST')
 
     def cd(self, path):
-        if not self.ftp:
-            print("Not connected.")
-            return
-        try:
-            self.ftp.cwd(path)
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost: {e}")
-            self._reset_connection()
+        self.ftp.cwd(path)
 
     def pwd(self):
-        if not self.ftp:
-            print("Not connected.")
-            return
-        try:
-            print(self.ftp.pwd())
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost: {e}")
-            self._reset_connection()
+        print(self.ftp.pwd())
 
     def mkdir(self, dirname):
-        if not self.ftp:
-            print("Not connected.")
-            return
-        try:
-            self.ftp.mkd(dirname)
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost: {e}")
-            self._reset_connection()
+        self.ftp.mkd(dirname)
 
     def rmdir(self, dirname):
-        if not self.ftp:
-            print("Not connected.")
-            return
-        try:
-            self.ftp.rmd(dirname)
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost: {e}")
-            self._reset_connection()
+        self.ftp.rmd(dirname)
 
     def delete(self, filename):
-        if not self.ftp:
-            print("Not connected.")
-            return
-        try:
-            self.ftp.delete(filename)
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost: {e}")
-            self._reset_connection()
+        self.ftp.delete(filename)
 
     def rename(self, from_name, to_name):
-        if not self.ftp:
-            print("Not connected.")
-            return
-        try:
-            self.ftp.rename(from_name, to_name)
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost: {e}")
-            self._reset_connection()
+        self.ftp.rename(from_name, to_name)
 
     def get(self, filename, destination_path=None):
-        if not self.ftp:
-            print("Not connected.")
-            return
         if destination_path:
+            # Nếu destination_path là thư mục, dùng tên gốc để lưu file
             if os.path.isdir(destination_path):
                 local_path = os.path.join(destination_path, os.path.basename(filename))
             else:
+                # Giả định destination_path là đường dẫn đầy đủ (bao gồm tên file mới)
                 local_path = destination_path
         else:
+            # Không truyền destination_path → dùng tên file gốc
             local_path = os.path.basename(filename)
 
         try:
             with open(local_path, 'wb') as f:
                 self.ftp.retrbinary(f"RETR {filename}", f.write)
             print(f"Downloaded {filename} -> {local_path}")
-        except (ConnectionResetError, BrokenPipeError, ftplib.all_errors) as e:
-            print(f"[ERROR] Failed to download {filename}: {str(e)}")
-            self._reset_connection()
         except Exception as e:
             print(f"[ERROR] Failed to download {filename}: {str(e)}")
 
+
     def mget(self, args):
-        """
-        Downloads multiple remote files/directories from the server.
-        Handles wildcards and recursive directory downloads.
-        """
-        if not self.ftp:
-            print("Not connected.")
-            return
+        import os
 
         args = args.strip().split()
         if not args:
-            print("Usage: mget <remote_pattern_1> [remote_pattern_2 ...] [local_destination_dir]")
+            print("Usage: mget <file1> [file2|wildcard ...] [destination_dir]")
             return
 
-        # Determine if the last argument is a local destination directory
+        # Xác định thư mục đích (nếu có)
         potential_dest = args[-1]
-        # A simple check: if it exists locally and is a directory.
         if os.path.isdir(potential_dest):
             dest_dir = os.path.normpath(potential_dest)
             patterns = args[:-1]
-            print(f"Files will be downloaded to '{dest_dir}'")
         else:
-            dest_dir = "." # Current local directory
+            dest_dir = "."
             patterns = args
-        
-        if not patterns:
-             print("No remote files or patterns specified.")
-             return
 
-        def _is_remote_directory(path):
-            """Checks if a path on the FTP server is a directory."""
-            if not self.ftp: return False
-            current_dir = self.ftp.pwd()
+        if not patterns:
+            print("No files or patterns specified.")
+            return
+
+        def is_directory(name):
             try:
-                self.ftp.cwd(path)
-                self.ftp.cwd(current_dir) # If both succeed, it's a directory
+                current = self.ftp.pwd()
+                self.ftp.cwd(name)
+                self.ftp.cwd(current)  # quay về lại nếu thành công
                 return True
-            except ftplib.all_errors:
+            except Exception:
                 return False
 
-        def _recursive_download(remote_path, local_path):
-            """Recursively downloads a remote directory."""
-            if not self.ftp:
-                print("[ERROR] Connection lost. Aborting recursive download.")
-                return
 
+        def recursive_download(remote_path, local_path):
+            """Tải đệ quy từ remote_path (trên server) vào local_path (trên máy)"""
             try:
                 os.makedirs(local_path, exist_ok=True)
-                print(f"Entering directory {remote_path} -> {local_path}")
-                
-                items = self.ftp.nlst(remote_path)
-                
-                for item_name in items:
-                    # nlst can return full paths, we only want the base name
-                    base_name = os.path.basename(item_name)
-                    if base_name in ('.', '..'):
+                file_list = []
+                self.ftp.retrlines(f'LIST {remote_path}', file_list.append)
+                for entry in file_list:
+                    parts = entry.split()
+                    if len(parts) < 9:
                         continue
-
-                    full_remote_path = f"{remote_path}/{base_name}"
-                    full_local_path = os.path.join(local_path, base_name)
-                    
-                    if not self.ftp: # Check connection before each item
-                        print("[ERROR] Connection lost. Aborting.")
-                        return
-
-                    if _is_remote_directory(full_remote_path):
-                        _recursive_download(full_remote_path, full_local_path)
+                    name = parts[-1]
+                    full_remote = f"{remote_path}/{name}"
+                    full_local = os.path.join(local_path, name)
+                    if entry.startswith('d'):
+                        if self.prompt:
+                            ans = input(f"Download directory {full_remote}? (y/n): ")
+                            if ans.lower() != 'y':
+                                continue
+                        recursive_download(full_remote, full_local)
                     else:
-                        # It's a file, download it
-                        self.get(full_remote_path, full_local_path)
-
-            except (ftplib.all_errors, ConnectionError) as e:
-                print(f"[ERROR] Could not process directory {remote_path}: {e}")
-                self._reset_connection()
+                        if self.prompt:
+                            ans = input(f"Download file {full_remote}? (y/n): ")
+                            if ans.lower() != 'y':
+                                continue
+                        try:
+                            with open(full_local, 'wb') as f:
+                                self.ftp.retrbinary(f"RETR {full_remote}", f.write)
+                            print(f"Downloaded {full_remote} -> {full_local}")
+                        except Exception as e:
+                            print(f"[ERROR] Failed to download {full_remote}: {str(e)}")
             except Exception as e:
-                print(f"[ERROR] An unexpected error occurred in recursive download: {e}")
+                print(f"[ERROR] Cannot access directory {remote_path}: {e}")
 
-        # Main loop for processing patterns
+        # Lặp qua từng pattern (tên cụ thể hoặc wildcard)
         for pattern in patterns:
-            if not self.ftp:
-                print("[ERROR] Connection lost. Aborting mget operation.")
-                break
             try:
-                matched_items = self.ftp.nlst(pattern)
-                if not matched_items:
-                    print(f"[INFO] No remote items found matching pattern: {pattern}")
-                    continue
-            except ftplib.error_perm as e:
-                # This often happens for "550 No files found" which is not a fatal error.
-                print(f"[INFO] Server response for '{pattern}': {e}")
+                matched = self.ftp.nlst(pattern)
+            except Exception as e:
+                print(f"[ERROR] Pattern '{pattern}' failed: {e}")
                 continue
-            except (ftplib.all_errors, ConnectionError) as e:
-                print(f"[ERROR] Failed to list pattern '{pattern}': {e}")
-                self._reset_connection()
-                continue # Skip to next pattern
 
-            for item in matched_items:
-                if not self.ftp:
-                    print("[ERROR] Connection lost. Aborting.")
-                    break
-                
-                # Check if it's a directory or a file
-                is_dir = _is_remote_directory(item)
-                
-                if not self.ftp: # _is_remote_directory could lose connection
-                     print("[ERROR] Connection lost. Aborting.")
-                     break
-                
-                if self.prompt:
-                    try:
-                        prompt_msg = "directory" if is_dir else "file"
-                        ans = input(f"Download {prompt_msg} {item}? (y/n): ")
+            if not matched:
+                print(f"[WARNING] No match for: {pattern}")
+                continue
+
+            for item in matched:
+                if is_directory(item):
+                    if self.prompt:
+                        ans = input(f"Download directory {item}? (y/n): ")
                         if ans.lower() != 'y':
                             continue
-                    except (EOFError, KeyboardInterrupt):
-                         print("\nDownload cancelled by user.")
-                         return
-                
-                if is_dir:
-                    # Target for recursive download is a new dir inside dest_dir
-                    local_target_path = os.path.join(dest_dir, os.path.basename(item))
-                    _recursive_download(item, local_target_path)
+                    recursive_download(item, os.path.join(dest_dir, os.path.basename(item)))
                 else:
-                    # Target for file download is directly inside dest_dir
-                    local_target_path = os.path.join(dest_dir, os.path.basename(item))
-                    self.get(item, local_target_path)
+                    if self.prompt:
+                        ans = input(f"Download file {item}? (y/n): ")
+                        if ans.lower() != 'y':
+                            continue
+                    try:
+                        target = os.path.join(dest_dir, os.path.basename(item))
+                        with open(target, 'wb') as f:
+                            self.ftp.retrbinary(f"RETR {item}", f.write)
+                        print(f"Downloaded {item} -> {target}")
+                    except Exception as e:
+                        print(f"[ERROR] Failed to download {item}: {str(e)}")
+
 
     def put(self, filepath):
-        if not self.ftp:
-            print("Not connected.")
-            return
         if not os.path.isfile(filepath):
             print(f"File '{filepath}' does not exist.")
             return
 
+        # First: scan file using ClamAVAgent
         result = self.scan_with_clamav(filepath)
-        if result != "OK":
-            if "INFECTED" in result:
-                print(f"[WARNING] File '{filepath}' is INFECTED. Upload aborted.")
-            else:
-                print(f"[ERROR] Scan failed: {result}")
-            return
-        
-        try:
+        if result == "OK":
             with open(filepath, 'rb') as f:
                 if self.transfer_mode == 'ascii':
                     self.ftp.storlines(f"STOR {os.path.basename(filepath)}", f)
                 else:
                     self.ftp.storbinary(f"STOR {os.path.basename(filepath)}", f)
             print(f"Uploaded {filepath}")
-        except (ConnectionResetError, BrokenPipeError, *ftplib.all_errors) as e:
-            print(f"[ERROR] Connection lost during upload: {e}")
-            self._reset_connection() # Reset the connection so we can quit cleanly
-        except Exception as e:
-            print(f"[ERROR] Failed to upload {filepath}: {e}")
+        elif result == "INFECTED":
+            print(f"[WARNING] File '{filepath}' is INFECTED. Upload aborted.")
+        else:
+            print(f"[ERROR] Scan failed: {result}")
 
     def mput(self, args):
-        """
-        Uploads multiple local files to the server.
-        Handles wildcards and recursive directory uploads.
-        """
-        if not self.ftp:
-            print("Not connected.")
-            return
-        
         import glob
 
         args = args.strip()
+        files = []
+
         if not args:
-            print("Usage: mput <file_or_pattern_1> [file_or_pattern_2 ...]")
-            print("Example: mput file.txt *.zip my_directory")
-            return
+            # Không có tham số: upload tất cả các file trong thư mục hiện tại
+            files = [os.path.join('.', f) for f in os.listdir('.') if os.path.isfile(f)]
+        else:
+            parts = args.split()
+            for pattern in parts:
+                pattern = os.path.normpath(pattern)
 
-        files_to_upload = set() # Use a set to avoid uploading the same file twice
-        patterns = args.split()
+                if os.path.isdir(pattern):
+                    # Nếu là thư mục: đệ quy lấy tất cả file trong đó
+                    for root, _, filenames in os.walk(pattern):
+                        for fname in filenames:
+                            files.append(os.path.join(root, fname))
 
-        for pattern in patterns:
-            # Check if the pattern is a directory
-            if os.path.isdir(pattern):
-                # Walk through the directory and add all files
-                for root, _, filenames in os.walk(pattern):
-                    for filename in filenames:
-                        files_to_upload.add(os.path.join(root, filename))
-            else:
-                # Use glob to handle wildcards and regular files
-                matched_files = glob.glob(pattern, recursive=True)
-                if not matched_files:
-                    print(f"[WARNING] No local files found matching pattern: {pattern}")
-                for f in matched_files:
-                    if os.path.isfile(f): # Ensure we only add files, not dirs from glob
-                         files_to_upload.add(f)
+                elif any(sep in pattern for sep in ('*', '?', '\\', '/')):
+                    # Nếu có wildcard hoặc đường dẫn: dùng glob
+                    matched = glob.glob(pattern, recursive=True)
+                    if matched:
+                        for m in matched:
+                            if os.path.isdir(m):
+                                for root, _, filenames in os.walk(m):
+                                    for fname in filenames:
+                                        files.append(os.path.join(root, fname))
+                            elif os.path.isfile(m):
+                                files.append(m)
+                    else:
+                        print(f"[WARNING] Không tìm thấy file khớp với: {pattern}")
 
-        if not files_to_upload:
-            print("No valid files to upload.")
-            return
+                else:
+                    # Kiểm tra nếu là file trong thư mục hiện tại
+                    full_path = os.path.join('.', pattern)
+                    if os.path.isfile(full_path):
+                        files.append(full_path)
+                    elif os.path.isdir(full_path):
+                        for root, _, filenames in os.walk(full_path):
+                            for fname in filenames:
+                                files.append(os.path.join(root, fname))
+                    else:
+                        print(f"[WARNING] Không tìm thấy: {pattern}")
 
-        print(f"Found {len(files_to_upload)} file(s) to upload.")
-        
-        for filepath in sorted(list(files_to_upload)):
-            if self.prompt:
-                try:
+        uploaded = set()
+
+        for filepath in files:
+            filepath = os.path.normpath(filepath)
+            if filepath in uploaded:
+                continue
+            uploaded.add(filepath)
+
+            if os.path.isfile(filepath):
+                if self.prompt:
                     ans = input(f"Upload {filepath}? (y/n): ")
                     if ans.lower() != 'y':
                         continue
-                except (EOFError, KeyboardInterrupt):
-                    print("\nUpload cancelled by user.")
-                    return
+                self.put(filepath)
+            else:
+                print(f"[ERROR] '{filepath}' không phải là file hợp lệ.")
 
-            # Use the robust `put` method for the actual upload and scan
-            self.put(filepath)
-
-            # If the connection was lost during the last 'put' operation, stop.
-            if not self.ftp:
-                print("[ERROR] Connection lost. Aborting mput operation.")
-                break
 
     def scan_with_clamav(self, filepath):
         try:
@@ -504,13 +390,8 @@ def main():
                 client.help()
             else:
                 print(f"Unknown command: {cmd}")
-        except IndexError:
-            print("Invalid command syntax.")
         except Exception as e:
-            # General fallback for any other unexpected errors
-            print(f"[CRITICAL ERROR] An unexpected error occurred: {e}")
-            if client.ftp:
-                client._reset_connection()
+            print(f"[ERROR] {str(e)}")
 
 if __name__ == '__main__':
     main()
