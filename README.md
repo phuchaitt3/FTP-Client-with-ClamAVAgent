@@ -30,7 +30,7 @@ This project simulates a secure file upload system using the FTP protocol, where
 python clamav_agent.py
 ```
 
-### 2. Start the FTP client
+### 2. Start the FTP client **on another terminal**
 
 ```bash
 python client2.py

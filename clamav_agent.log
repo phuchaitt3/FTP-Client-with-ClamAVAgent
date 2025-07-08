@@ -115,3 +115,12 @@ ERROR: Can't get file status
 2025-07-01 20:04:54,265 - INFO - Sent result 'ERROR: clamscan not found' to ('127.0.0.1', 51049)
 2025-07-01 20:04:54,272 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
 2025-07-01 20:04:54,272 - INFO - Connection with ('127.0.0.1', 51049) closed.
+2025-07-08 10:49:57,493 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-07-08 11:05:17,776 - INFO - Accepted connection from ('127.0.0.1', 60385)
+2025-07-08 11:05:17,776 - INFO - Receiving file 'safe_document.txt' (64 bytes) from ('127.0.0.1', 60385)
+2025-07-08 11:05:18,166 - INFO - File 'safe_document.txt' received successfully.
+2025-07-08 11:05:18,166 - INFO - Running clamscan on: temp_scans\safe_document.txt
+2025-07-08 11:05:48,776 - INFO - Scan result for temp_scans\safe_document.txt: OK
+2025-07-08 11:05:48,776 - INFO - Sent result 'OK' to ('127.0.0.1', 60385)
+2025-07-08 11:05:48,776 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
+2025-07-08 11:05:48,777 - INFO - Connection with ('127.0.0.1', 60385) closed.
