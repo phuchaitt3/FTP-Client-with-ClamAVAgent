@@ -158,3 +158,20 @@ ERROR: Can't get file status
 2025-07-14 21:14:49,737 - INFO - Sent result 'OK' to ('127.0.0.1', 49321)
 2025-07-14 21:14:49,737 - INFO - Cleaned up temporary file: temp_scans\safe_document.txt
 2025-07-14 21:14:49,737 - INFO - Connection with ('127.0.0.1', 49321) closed.
+2025-07-14 21:19:36,085 - INFO - ClamAV Agent listening on 127.0.0.1:6789
+2025-07-14 21:20:45,272 - INFO - Accepted connection from ('127.0.0.1', 49519)
+2025-07-14 21:20:45,272 - INFO - Receiving file 'test_file_0.txt' (0 bytes) from ('127.0.0.1', 49519)
+2025-07-14 21:20:45,272 - INFO - File 'test_file_0.txt' received successfully.
+2025-07-14 21:20:45,272 - INFO - Running clamscan on: temp_scans\test_file_0.txt
+2025-07-14 21:21:07,493 - INFO - Scan result for temp_scans\test_file_0.txt: OK
+2025-07-14 21:21:07,494 - INFO - Sent result 'OK' to ('127.0.0.1', 49519)
+2025-07-14 21:21:07,494 - INFO - Cleaned up temporary file: temp_scans\test_file_0.txt
+2025-07-14 21:21:07,494 - INFO - Connection with ('127.0.0.1', 49519) closed.
+2025-07-14 21:23:12,287 - INFO - Accepted connection from ('127.0.0.1', 49572)
+2025-07-14 21:23:12,287 - INFO - Receiving file 'file_with_txt.txt' (56 bytes) from ('127.0.0.1', 49572)
+2025-07-14 21:23:12,287 - INFO - File 'file_with_txt.txt' received successfully.
+2025-07-14 21:23:12,287 - INFO - Running clamscan on: temp_scans\file_with_txt.txt
+2025-07-14 21:23:33,968 - INFO - Scan result for temp_scans\file_with_txt.txt: OK
+2025-07-14 21:23:33,968 - INFO - Sent result 'OK' to ('127.0.0.1', 49572)
+2025-07-14 21:23:33,968 - INFO - Cleaned up temporary file: temp_scans\file_with_txt.txt
+2025-07-14 21:23:33,968 - INFO - Connection with ('127.0.0.1', 49572) closed.
