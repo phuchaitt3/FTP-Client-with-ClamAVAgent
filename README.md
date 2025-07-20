@@ -1,4 +1,3 @@
-
 # 📁 Secure FTP Client with Virus Scanning via ClamAVAgent
 
 ## 🚀 Project Description
@@ -7,7 +6,7 @@ This project simulates a secure file upload system using the FTP protocol, where
 
 ## ⚙️ System Components
 
-- `client.py`: A command-line FTP client supporting standard FTP commands and integrated virus scanning.
+- `client2.py`: A command-line FTP client supporting standard FTP commands and integrated virus scanning.
 - `clamav_agent.py`: A scanning server that receives files via socket, scans them using ClamAV (`clamscan`), and returns results.
 - **FTP Server**: FileZilla Server (port 21 by default).
 
@@ -30,7 +29,7 @@ This project simulates a secure file upload system using the FTP protocol, where
 python clamav_agent.py
 ```
 
-### 2. Start the FTP client **on another terminal**
+### 2. Start the FTP client
 
 ```bash
 python client.py
@@ -43,6 +42,18 @@ ftp> open 127.0.0.1 21
 Username: <your FTP username>
 Password: <your FTP password>
 ```
+
+> ✅ If you're testing client and server on the same machine, run:
+> ```bash
+> ftp> testmode on
+> ```
+> This will force active mode to use 127.0.0.1 for connections.
+>
+> ✅ If you're testing across different machines (real network), run:
+> ```bash
+> ftp> testmode off
+> ```
+> This lets the client use its actual LAN IP for active mode.
 
 ### 3. When finished, exit cleanly using:
 
@@ -58,109 +69,97 @@ ftp> quit
 
 Connect to the FTP server. **This command must be run before using any other commands.**
 
-### ✅ `quit` / `bye`
-
-Exit the FTP client.
+---
 
 ### ✅ `put`
 
-Upload a single file (will be scanned first):
+Upload a file (will be scanned first by ClamAV):
 
-- `put <filename>`
-- `put <full_path_to_file>`
+- `put <file_path>` → Can be just a filename or a path to file (even outside current terminal folder)
+
+---
 
 ### ✅ `mput`
 
-Upload multiple files (each file is scanned before upload):
+Upload multiple files and/or folders:
 
-- `mput <file1> <file2> ...`
-- `mput <full_path_file1> <full_path_file2> ...`
-- `mput <wildcard_pattern>` (e.g., `mput *.txt`, `mput folder/**/*.py`)
-+ `mput *.txt`: The FTP client will look for all files in the current local directory that have the .txt file extension
-+ `mput folder/**/*.py`: 
+- `mput <file1> <file2> ...`  
+- `mput <folder1> <folder2> ...`
+- `mput *.txt folderA/*.md`
+- ✅ You can mix file/folder names and wildcard patterns together:
+  ```
+  mput *.jpg docs/ notes/*.md
+  ```
+
+Each file is scanned individually before upload.
+
+---
 
 ### ✅ `get`
 
 Download a single file from the server:
 
-- `get <filename>` → save in current folder with the original name
-- `get <filename> <download_directory>` → save in specified folder with original name
-- `get <filename> <new_full_path>` → save to specific path and name
+- `get <remote_filename>` → Save to current local directory
+- `get <remote_filename> <local_directory>` → Save using original name inside target folder
+- `get <remote_filename> <full_local_path>` → Save with new path and/or name
+
+All modes are supported with optional destination.
+
+---
 
 ### ✅ `mget`
 
-Download multiple files:
+Download multiple files or folders:
 
 - `mget <file1> <file2> ...`
-- `mget <file1> <file2> ... <destination_directory>`
+- `mget <folder1> <file2> ...`
+- `mget *.pdf folderA/*.txt`
+- `mget *.jpg target_folder/` → final argument is treated as destination folder if it exists
 
-### ✅ `delete <filename>`
+Supports recursion (e.g., downloading folders and their content), and destination folder can be optionally specified as the last argument.
 
-Delete a file from the FTP server.
+---
 
-### ✅ `rename <old_name> <new_name>`
+### ✅ Other FTP Commands
 
-Rename a file on the FTP server.
-
-### ✅ `mkdir <directory_name>`
-
-Create a new directory on the FTP server.
-
-### ✅ `rmdir <directory_name>`
-
-Remove a directory on the FTP server.
-
-### ✅ `ls`
-
-List files and directories on the server.
-
-### ✅ `cd <directory_name>`
-
-Change working directory on the server.
-
-### ✅ `pwd`
-
-Display the current directory on the server.
-
-### ✅ `ascii` / `binary`
-
-Switch between ASCII and binary transfer modes.
-
-### ✅ `prompt`
-
-Toggle confirmation prompts for `mput` and `mget`.
-
-### ✅ `passive`
-
-Toggle passive FTP mode.
-
-### ✅ `status`
-
-Display current session status.
-
-### ✅ `help`, `?`
-
-Show help message.
+| Command | Description |
+|--------|-------------|
+| `delete <filename>` | Delete file from FTP server |
+| `rename <old_name> <new_name>` | Rename file |
+| `mkdir <dir_name>` | Create folder |
+| `rmdir <dir_name>` | Remove folder |
+| `ls` | List files on server |
+| `cd <dir_name>` | Change server directory |
+| `pwd` | Show current directory |
+| `ascii` / `binary` | Switch transfer mode |
+| `prompt` | Toggle y/n confirmation for `mput` and `mget` |
+| `passive` | Toggle passive/active mode |
+| `status` | Show connection info |
+| `help`, `?` | Show help |
 
 ---
 
 ## 🛡️ Virus Scanning Workflow
 
-Before uploading a file via `put` or `mput`, it is sent to the ClamAVAgent via socket. The agent runs `clamscan`, then returns one of the following results:
+Before uploading any file via `put` or `mput`, it is sent to the ClamAVAgent via socket.
 
-- `OK`: Safe to upload to the FTP server
-- `INFECTED`: Upload is aborted
-- `ERROR`: Scan failed or communication error
+The agent runs `clamscan` and returns:
+
+- `OK` → File is clean and will be uploaded
+- `INFECTED` → Upload aborted
+- `ERROR` → Scan failed or connection problem
 
 ---
 
 ## ✅ Recommended Usage Checklist
 
-- Use `open` to connect before using any FTP commands
-- Use `quit` to exit properly
-- Uploads are only allowed if ClamAVAgent reports the file as clean
-- Wildcard upload/download (via `mput` / `mget`) works with confirmation prompts
-- Ensure `clamscan` runs properly from terminal
+- ✅ Use `open <host>` before any other command
+- ✅ Set `testmode on` if client and server run on same machine (forces IP = 127.0.0.1)
+- ✅ Use `testmode off` for LAN or different machines (uses real IP)
+- ✅ Files are scanned before upload — infected files are blocked
+- ✅ You can use wildcard patterns with `mput` and `mget`
+- ✅ Use `prompt` to toggle confirmation for batch operations
+- ✅ Use `quit` to exit the client cleanly
 
 ---
 
@@ -168,4 +167,5 @@ Before uploading a file via `put` or `mput`, it is sent to the ClamAVAgent via s
 
 - **You must use `open` before any other command**
 - **Use `quit` or `bye` to exit the client gracefully**
-- All uploaded files are scanned first — infected files will NOT be uploaded
+- **All uploaded files are scanned**
+- **Active and Passive FTP modes are both supported and switchable at runtime**
