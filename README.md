@@ -6,7 +6,7 @@ This project simulates a secure file upload system using the FTP protocol, where
 
 ## ⚙️ System Components
 
-- `client2.py`: A command-line FTP client supporting standard FTP commands and integrated virus scanning.
+- `ftp_client.py`: A command-line FTP client supporting standard FTP commands and integrated virus scanning.
 - `clamav_agent.py`: A scanning server that receives files via socket, scans them using ClamAV (`clamscan`), and returns results.
 - **FTP Server**: FileZilla Server (port 21 by default).
 
@@ -32,7 +32,7 @@ python clamav_agent.py
 ### 2. Start the FTP client
 
 ```bash
-python client.py
+python ftp_client.py
 ```
 
 Once launched, **you must use the `open` command first to connect to the FTP server**:

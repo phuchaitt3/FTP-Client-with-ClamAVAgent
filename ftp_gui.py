@@ -2,7 +2,7 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import threading
-from client import FTPClient
+from ftp_client import FTPClient
 
 
 class FTPGuiApp:
