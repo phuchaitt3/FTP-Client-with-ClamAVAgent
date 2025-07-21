@@ -4,9 +4,11 @@ import socket
 import fnmatch
 # import glob
 import re
+import configparser
 
-CLAMAV_HOST = '127.0.0.1'
-CLAMAV_PORT = 6789
+# REMOVE the old global constants for ClamAV
+# CLAMAV_HOST = '127.0.0.1'
+# CLAMAV_PORT = 6789
 BUFFER_SIZE = 4096
 
 class RawFTPClient:
@@ -16,11 +18,39 @@ class RawFTPClient:
         self.transfer_mode = 'binary'
         self.prompt = True
         self.connected = False
+
         self.host = None
+        self.clamav_host = None
+        self.clamav_port = None
 
         self.active_data_listener = None
         self.local_test_mode = True  # Mặc định bật chế độ test local (127.0.0.1)
 
+    # Method to load the configuration
+    def load_config(self):
+        """Loads configuration from config.ini file."""
+        config = configparser.ConfigParser()
+        try:
+            config.read_file(open('config.ini'))
+            self.clamav_host = config['DEFAULT'].get('clamav_host')
+            self.clamav_port = config['DEFAULT'].getint('clamav_port')
+
+            if not self.clamav_host or not self.clamav_port:
+                print("[WARN] ClamAV host or port is missing in config.ini. Scanning will fail.")
+            else:
+                print(f"[INFO] ClamAV agent loaded from config: {self.clamav_host}:{self.clamav_port}")
+
+        except FileNotFoundError:
+            print("[WARN] config.ini not found. Virus scanning will be disabled.")
+            print("[WARN] Please create config.ini to enable scanning.")
+        except Exception as e:
+            print(f"[ERROR] Could not read config.ini: {e}")
+
+    def set_clamav(self, host, port=6789):
+        """Sets the address for the ClamAV scanning agent."""
+        self.clamav_host = host
+        self.clamav_port = port
+        print(f"[OK] ClamAV agent address set to {self.clamav_host}:{self.clamav_port}")
 
     def connect(self, host, port=21):
         self.host = host
@@ -75,22 +105,45 @@ class RawFTPClient:
 
     def _open_data_connection(self):
         if self.passive_mode:
-            self._send_cmd("PASV")
-            resp = self._recv_response_blocking()
-            print(f"[DEBUG] PASV response: {resp}")  # debug thêm
-            if not resp.startswith('227'):
-                raise Exception(f"PASV failed: {resp}")
-            match = re.search(r'\((.*?)\)', resp)
-            if not match:
-                raise Exception("PASV response format invalid")
-            numbers = match.group(1).split(',')
-            if len(numbers) != 6:
-                raise Exception("Invalid PASV address data")
-            ip = '.'.join(numbers[:4])
-            port = (int(numbers[4]) << 8) + int(numbers[5])
-            data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            data_sock.connect((ip, port))
-            return data_sock
+            # --- Modern Approach: Try EPSV first ---
+            try:
+                self._send_cmd("EPSV")
+                resp = self._recv_response_blocking()
+                print(f"[DEBUG] EPSV response: {resp}")
+
+                if not resp.startswith('229'):
+                    raise Exception("Server does not support EPSV, falling back.")
+
+                # The EPSV response is like: "229 Entering Extended Passive Mode (|||64311|)"
+                match = re.search(r'\((\|\|\|(\d+)\|)\)', resp)
+                if not match:
+                    raise Exception("Cannot parse EPSV response")
+                
+                port = int(match.group(2))
+                
+                # For the data connection, we connect to the SAME HOST as the control connection.
+                data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                data_sock.connect((self.host, port))
+                return data_sock
+            except Exception as e:
+                print(f"[WARN] EPSV failed: {e}. Trying legacy PASV.")
+                
+                self._send_cmd("PASV")
+                resp = self._recv_response_blocking()
+                print(f"[DEBUG] PASV response: {resp}")  # debug thêm
+                if not resp.startswith('227'):
+                    raise Exception(f"PASV failed: {resp}")
+                match = re.search(r'\((.*?)\)', resp)
+                if not match:
+                    raise Exception("PASV response format invalid")
+                numbers = match.group(1).split(',')
+                if len(numbers) != 6:
+                    raise Exception("Invalid PASV address data")
+                ip = '.'.join(numbers[:4])
+                port = (int(numbers[4]) << 8) + int(numbers[5])
+                data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                data_sock.connect((ip, port))
+                return data_sock
         
         else:
             print("[DEBUG] Đang vào active mode _open_data_connection()")
@@ -515,13 +568,14 @@ class RawFTPClient:
                             continue
                     self.get(target, local_file)
 
-
-
     def scan_with_clamav(self, filepath):
+        if not self.clamav_host:
+            return "ERROR: ClamAV agent address is not configured. Please create a valid config.ini file."
+
         try:
             filesize = os.path.getsize(filepath)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.connect((CLAMAV_HOST, CLAMAV_PORT))
+            s.connect((self.clamav_host, self.clamav_port))
             metadata = f"{os.path.basename(filepath)}:{filesize}"
             s.sendall(metadata.encode())
             ack = s.recv(1024)
@@ -567,6 +621,8 @@ Supported Commands:
 
 def main():
     client = RawFTPClient()
+    client.load_config()
+
     while True:
         try:
             command = input("ftp> ").strip()

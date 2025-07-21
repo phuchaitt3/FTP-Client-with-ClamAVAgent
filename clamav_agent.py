@@ -4,7 +4,8 @@ import subprocess
 import os
 
 # --- Configuration ---
-HOST = '127.0.0.1'  # Localhost
+# HOST = '127.0.0.1'  # Localhost
+HOST = '0.0.0.0'  # Listen on all available network interfaces
 PORT = 6789         # Port to listen on
 TEMP_DIR = "temp_scans"
 
