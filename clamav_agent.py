@@ -1,3 +1,4 @@
+# clamav_agent.py
 import socket
 import subprocess
 import os

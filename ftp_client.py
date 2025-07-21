@@ -1,7 +1,8 @@
+# ftp_client.py
 import os
 import socket
 import fnmatch
-import glob
+# import glob
 import re
 
 CLAMAV_HOST = '127.0.0.1'
