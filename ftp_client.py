@@ -159,7 +159,9 @@ class RawFTPClient:
             else:
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 try:
+                    # 8.8.8.8 is the IP address for Google's public DNS service
                     s.connect(("8.8.8.8", 80))
+                    # Lấy IP của máy tính đang chạy mã này
                     ip = s.getsockname()[0]
                 finally:
                     s.close()
