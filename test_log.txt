@@ -11,6 +11,7 @@
 # get
 - safe_document.txt
 - Downloaded resume.pdf -> E:\1.downloads\resume.pdf
++ get safe_document.txt E:\1.git_projs\MMT_proj1\test_files\test3.txt
 
 # mget
 - !NOTE: Bug ZoomInstallerFull - Copy -> Download file Copy.exe? (y/n):
@@ -22,16 +23,35 @@
 
 # `rename <old_name> <new_name>`
 - rename resume.pdf Resume.pdf
++ rename safe_document.txt safe.txt
 
 # `mkdir <dir_name>`
 - !NOTE: ftp> mkdir With space folder
 [OK] 257 "/With" created successfully.
++ mkdir folder
 
 # `rmdir <dir_name>`
 - rmdir With
++ mkdir folder
 
 # `ls`
 
 # `cd <dir_name>`
 - !NOTE: cd C:\Users\PHONG\Desktop\FileZilla\inside\
 [ERROR] 550 Invalid file name or path
+
+# pwd
++ pwd
+257 "/ftp" is the current directory
+
+# status
++ status
+Passive Mode: True
+Transfer Mode: binary
+Connected: True
+
+# help
++ help
+
+---ACTIVE---
++ put safe_document.txt

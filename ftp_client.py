@@ -24,7 +24,7 @@ class RawFTPClient:
         self.clamav_port = None
 
         self.active_data_listener = None
-        self.local_test_mode = True  # Mặc định bật chế độ test local (127.0.0.1)
+        self.local_test_mode = False  # Mặc định bật chế độ test local (127.0.0.1)
 
     # Method to load the configuration
     def load_config(self):
@@ -95,12 +95,17 @@ class RawFTPClient:
             while True:
                 part = self.control_sock.recv(BUFFER_SIZE)
                 data += part
-                if len(part) < BUFFER_SIZE:
+                # A simple way to detect the end of a multi-line FTP response
+                if len(part) < BUFFER_SIZE and (data.endswith(b'\r\n') or not part):
                     break
-            return data.decode().strip()
+            decoded_data = data.decode().strip()
+            # print(f"[SERVER RESPONSE]\n---\n{decoded_data}\n---")
+            return decoded_data
         except socket.timeout:
+            print("[ERROR] Timeout receiving response")
             return "[ERROR] Timeout receiving response"
         except Exception as e:
+            print(f"[ERROR] {str(e)}")
             return f"[ERROR] {str(e)}"
 
     def _open_data_connection(self):
@@ -109,7 +114,7 @@ class RawFTPClient:
             try:
                 self._send_cmd("EPSV")
                 resp = self._recv_response_blocking()
-                print(f"[DEBUG] EPSV response: {resp}")
+                # print(f"[DEBUG] EPSV response: {resp}")
 
                 if not resp.startswith('229'):
                     raise Exception("Server does not support EPSV, falling back.")
@@ -146,12 +151,11 @@ class RawFTPClient:
                 return data_sock
         
         else:
-            print("[DEBUG] Đang vào active mode _open_data_connection()")
+            # print("[DEBUG] Entering Active Mode data connection setup...")
 
             self.active_data_listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.active_data_listener.bind(('', 0))
             self.active_data_listener.settimeout(10)  # tránh treo mãi nếu server không connect lại
-
             self.active_data_listener.listen(1)
 
             if self.local_test_mode:
@@ -244,7 +248,7 @@ class RawFTPClient:
                 print(data.decode(), end='')
 
             data_sock.close()
-            print(self._recv_response_blocking())
+            # print(self._recv_response_blocking())
 
         except Exception as e:
             print(f"[ERROR] {str(e)}")
@@ -265,18 +269,20 @@ class RawFTPClient:
     def mkdir(self, dirname):
         self._send_cmd(f"MKD {dirname}")
         resp = self._recv_response_blocking()
-        if resp.startswith("257"):
-            print(f"[OK] {resp}")
-        else:
-            print(f"[ERROR] {resp}")
+        # if resp.startswith("257"):
+        #     print(f"[OK] {resp}")
+        # else:
+        #     print(f"[ERROR] {resp}")
+        print(f"Response: {resp}")
 
     def rmdir(self, dirname):
         self._send_cmd(f"RMD {dirname}")
         resp = self._recv_response_blocking()
-        if resp.startswith("250"):
-            print(f"[OK] {resp}")
-        else:
-            print(f"[ERROR] {resp}")
+        print(f"Response: {resp}")
+        # if resp.startswith("250"):
+        #     print(f"[OK] {resp}")
+        # else:
+        #     print(f"[ERROR] {resp}")
 
     def delete(self, filename):
         self._send_cmd(f"DELE {filename}")
@@ -301,6 +307,7 @@ class RawFTPClient:
             local_path = os.path.basename(filename)
 
         try:
+            data_sock = None # Initialize to None
             if self.passive_mode:
                 data_sock = self._open_data_connection()
             else:
@@ -320,13 +327,21 @@ class RawFTPClient:
                 self.active_data_listener.close()
                 self.active_data_listener = None
 
+            if data_sock is None and self.passive_mode:
+                print("[ERROR] Failed to establish a data socket in passive mode.")
+                return
+
             if self.passive_mode:
                 self._send_cmd(f"RETR {filename}")
                 resp = self._recv_response_blocking()
                 if not resp.startswith('150'):
+                    print(f"[ERROR] Server did not respond with '150 File status okay'. Aborting download.")
                     print(f"[ERROR] {resp}")
+                    if data_sock:
+                        data_sock.close()
                     return
 
+            # print(f"[DEBUG] Server is ready to send. Receiving data into '{local_path}'...")
             os.makedirs(os.path.dirname(local_path) or '.', exist_ok=True)
             with open(local_path, 'wb') as f:
                 while True:
