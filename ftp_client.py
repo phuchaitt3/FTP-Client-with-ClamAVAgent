@@ -73,6 +73,8 @@ class RawFTPClient:
         self.connected = True
         print(f"Connected to {host}:{port} as {user}")
 
+        self.cd('ftp')
+
     def disconnect(self):
         if self.control_sock:
             try:
