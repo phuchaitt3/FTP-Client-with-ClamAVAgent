@@ -74,19 +74,11 @@ class RawFTPClient:
 
     def _open_data_connection(self):
         if self.passive_mode:
-<<<<<<< HEAD
-            # Passive mode (giữ nguyên)
-            self._send_cmd("PASV")
-            resp = self._recv_response_blocking()
-            if not resp.startswith('227'):
-                raise Exception("PASV failed")
-=======
             self._send_cmd("PASV")
             resp = self._recv_response_blocking()
             print(f"[DEBUG] PASV response: {resp}")  # debug thêm
             if not resp.startswith('227'):
                 raise Exception(f"PASV failed: {resp}")
->>>>>>> be2b963 (fix client)
             match = re.search(r'\((.*?)\)', resp)
             if not match:
                 raise Exception("PASV response format invalid")
@@ -98,36 +90,6 @@ class RawFTPClient:
             data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             data_sock.connect((ip, port))
             return data_sock
-<<<<<<< HEAD
-        else:
-            data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            data_sock.bind(('', 0))
-            data_sock.listen(1)
-
-            # Lấy IP LAN thực tế
-            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            try:
-                s.connect(("8.8.8.8", 80))
-                ip = s.getsockname()[0]
-            finally:
-                s.close()
-
-            port = data_sock.getsockname()[1]
-            print(f"[DEBUG] Active mode: Using IP = {ip}, Port = {port}")
-
-            ip_nums = ip.split('.')
-            p1 = port >> 8
-            p2 = port & 0xFF
-            self._send_cmd(f"PORT {','.join(ip_nums)},{p1},{p2}")
-            resp = self._recv_response_blocking()
-            if not resp.startswith('200'):
-                data_sock.close()
-                raise Exception(f"PORT failed: {resp}")
-            conn, _ = data_sock.accept()
-            data_sock.close()
-            return conn
-
-=======
         
         else:
             print("[DEBUG] Đang vào active mode _open_data_connection()")
@@ -161,7 +123,6 @@ class RawFTPClient:
                 self.active_data_listener = None
                 raise Exception(f"PORT failed: {resp}")
             return None  # chủ động trả về None để phân biệt
->>>>>>> be2b963 (fix client)
 
 
     def status(self):
@@ -192,23 +153,15 @@ class RawFTPClient:
 
     def ls(self):
         try:
-<<<<<<< HEAD
-            data_sock = self._open_data_connection()
-=======
             if self.passive_mode:
                 data_sock = self._open_data_connection()
             else:
                 self._open_data_connection()
 
->>>>>>> be2b963 (fix client)
             self._send_cmd("LIST")
             resp = self._recv_response_blocking()
             if not resp.startswith("150"):
                 print(f"[ERROR] {resp}")
-<<<<<<< HEAD
-                data_sock.close()
-                return
-=======
                 if self.passive_mode:
                     data_sock.close()
                 else:
@@ -228,21 +181,15 @@ class RawFTPClient:
                 self.active_data_listener = None
 
 
->>>>>>> be2b963 (fix client)
             while True:
                 data = data_sock.recv(BUFFER_SIZE)
                 if not data:
                     break
                 print(data.decode(), end='')
-<<<<<<< HEAD
-            data_sock.close()
-            print(self._recv_response_blocking())
-=======
 
             data_sock.close()
             print(self._recv_response_blocking())
 
->>>>>>> be2b963 (fix client)
         except Exception as e:
             print(f"[ERROR] {str(e)}")
 
@@ -298,15 +245,6 @@ class RawFTPClient:
             local_path = os.path.basename(filename)
 
         try:
-<<<<<<< HEAD
-            data_sock = self._open_data_connection()
-            self._send_cmd(f"RETR {filename}")
-            resp = self._recv_response_blocking()
-            if not resp.startswith('150'):
-                print(f"[ERROR] {resp}")
-                data_sock.close()
-                return
-=======
             if self.passive_mode:
                 data_sock = self._open_data_connection()
             else:
@@ -333,7 +271,6 @@ class RawFTPClient:
                     print(f"[ERROR] {resp}")
                     return
 
->>>>>>> be2b963 (fix client)
             os.makedirs(os.path.dirname(local_path) or '.', exist_ok=True)
             with open(local_path, 'wb') as f:
                 while True:
@@ -346,17 +283,10 @@ class RawFTPClient:
             data_sock.close()
             print(self._recv_response_blocking())
             print(f"Downloaded {filename} -> {local_path}")
-<<<<<<< HEAD
-        except Exception as e:
-            print(f"[ERROR] {str(e)}")
-
-=======
 
         except Exception as e:
             print(f"[ERROR] {str(e)}")
 
-
->>>>>>> be2b963 (fix client)
     def make_remote_dirs(self, path):
         dirs = path.replace("\\", "/").split("/")
         curr = ""
@@ -382,17 +312,6 @@ class RawFTPClient:
             remote_path = os.path.join(remote_rel_path, os.path.basename(filepath)).replace('\\', '/')
             remote_dir = os.path.dirname(remote_path)
             if remote_dir:
-<<<<<<< HEAD
-                self.make_remote_dirs(remote_dir)  # tạo thư mục đệ quy
-
-            data_sock = self._open_data_connection()
-            self._send_cmd(f"STOR {remote_path}")
-            resp = self._recv_response_blocking()
-            if not resp.startswith('150'):
-                print(f"[ERROR] {resp}")
-                data_sock.close()
-                return
-=======
                 self.make_remote_dirs(remote_dir)
 
             if self.passive_mode:
@@ -419,7 +338,6 @@ class RawFTPClient:
                 self.active_data_listener.close()
                 self.active_data_listener = None
 
->>>>>>> be2b963 (fix client)
             with open(filepath, 'rb') as f:
                 while True:
                     data = f.read(BUFFER_SIZE)
@@ -434,10 +352,6 @@ class RawFTPClient:
         except Exception as e:
             print(f"[ERROR] {str(e)}")
 
-<<<<<<< HEAD
-=======
-
->>>>>>> be2b963 (fix client)
     def mput(self, args):
         import glob
         parts = args.strip().split()
@@ -497,14 +411,6 @@ class RawFTPClient:
 
         def recursive_download(remote_path, local_path):
             os.makedirs(local_path, exist_ok=True)
-<<<<<<< HEAD
-            data_sock = self._open_data_connection()
-            self._send_cmd(f"LIST {remote_path}")
-            resp = self._recv_response_blocking()
-            if not resp.startswith("150"):
-                print(f"[ERROR] {resp}")
-                return
-=======
 
             if self.passive_mode:
                 data_sock = self._open_data_connection()
@@ -530,7 +436,6 @@ class RawFTPClient:
                 self.active_data_listener.close()
                 self.active_data_listener = None
 
->>>>>>> be2b963 (fix client)
             listing = b""
             while True:
                 chunk = data_sock.recv(BUFFER_SIZE)
@@ -540,10 +445,6 @@ class RawFTPClient:
             data_sock.close()
             self._recv_response_blocking()
 
-<<<<<<< HEAD
-=======
-
->>>>>>> be2b963 (fix client)
             for name, is_dir in parse_listing(listing):
                 remote_item = f"{remote_path}/{name}".replace("//", "/")
                 local_item = os.path.join(local_path, name)
@@ -688,8 +589,6 @@ def main():
                 client.status()
             elif cmd == 'passive':
                 client.toggle_passive()
-<<<<<<< HEAD
-=======
             elif cmd == 'testmode':
                 if len(parts) == 2 and parts[1].lower() == 'on':
                     client.local_test_mode = True
@@ -699,7 +598,6 @@ def main():
                     print("[INFO] Local test mode disabled (using real IP for active mode)")
                 else:
                     print("[ERROR] Usage: testmode on/off")
->>>>>>> be2b963 (fix client)
             elif cmd == 'ascii':
                 client.set_ascii()
             elif cmd == 'binary':
