@@ -1,0 +1,70 @@
+# `put <file_path>`
+- Text file with text without path
+- Png file with full path from outside project folder
+
+# `mput <file1> <file2> ...`
+- 2 duplicate pdf files
+- 1 md file + 1 exe file
+- *.txt
++ ftp> mput *.txt
+Upload safe_document.txt? (y/n): n
+Upload test_log.txt? (y/n): y
+[DEBUG] EPSV response: 229 Entering Extended Passive Mode (|||50952|)
+226 Transfer complete.
+Uploaded test_log.txt -> test_log.txt
+Upload todo_tasks.txt? (y/n): y
+[DEBUG] EPSV response: 229 Entering Extended Passive Mode (|||50161|)
+226 Transfer complete.
+Uploaded todo_tasks.txt -> todo_tasks.txt
+
+# get
+- safe_document.txt
+- Downloaded resume.pdf -> E:\1.downloads\resume.pdf
++ get safe_document.txt E:\1.git_projs\MMT_proj1\test_files\test3.txt
++ ftp> get test_log.txt E:\1.git_projs\MMT_proj1\test_files
+[DEBUG] EPSV response: 229 Entering Extended Passive Mode (|||50033|)
+226 Transfer complete.
+Downloaded test_log.txt -> E:\1.git_projs\MMT_proj1\test_files\test_log.txt
+
+# mget
+- !NOTE: Bug ZoomInstallerFull - Copy -> Download file Copy.exe? (y/n):
+- mget *.exe *.txt E:\1.downloads\garbage\filezilla\
+    Still download other files when the first file encounters error
+
+# `delete <filename>`
+- delete ZoomInstallerFull.exe
+
+# `rename <old_name> <new_name>`
+- rename resume.pdf Resume.pdf
++ rename safe_document.txt safe.txt
+
+# `mkdir <dir_name>`
+- !NOTE: ftp> mkdir With space folder
+[OK] 257 "/With" created successfully.
++ mkdir folder
+
+# `rmdir <dir_name>`
+- rmdir With
++ mkdir folder
+
+# `ls`
+
+# `cd <dir_name>`
+- !NOTE: cd C:\Users\PHONG\Desktop\FileZilla\inside\
+[ERROR] 550 Invalid file name or path
+
+# pwd
++ pwd
+257 "/ftp" is the current directory
+
+# status
++ status
+Passive Mode: True
+Transfer Mode: binary
+Connected: True
+
+# help
++ help
+
+---ACTIVE---
++ put safe_document.txt

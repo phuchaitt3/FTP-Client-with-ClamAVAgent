@@ -38,9 +38,9 @@ python ftp_client.py
 Once launched, **you must use the **``** command first to connect to the FTP server**:
 
 ```bash
-ftp> open 127.0.0.1 21
-Username: <your FTP username>
-Password: <your FTP password>
+ftp> open 146.190.91.115 21
+Username: sinhvien
+Password: 12345678
 ```
 
 > ✅ If you're testing client and server on the same machine, run:

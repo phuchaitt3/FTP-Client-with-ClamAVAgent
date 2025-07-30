@@ -1,0 +1,1 @@
+- self.local_test_mode = True. Log this when client first runs
