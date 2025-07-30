@@ -116,7 +116,7 @@ class RawFTPClient:
             try:
                 self._send_cmd("EPSV")
                 resp = self._recv_response_blocking()
-                # print(f"[DEBUG] EPSV response: {resp}")
+                print(f"[DEBUG] EPSV response: {resp}")
 
                 if not resp.startswith('229'):
                     raise Exception("Server does not support EPSV, falling back.")
@@ -250,7 +250,7 @@ class RawFTPClient:
                 print(data.decode(), end='')
 
             data_sock.close()
-            # print(self._recv_response_blocking())
+            print(self._recv_response_blocking())
 
         except Exception as e:
             print(f"[ERROR] {str(e)}")
