@@ -2,6 +2,7 @@
 import socket
 import subprocess
 import os
+import sys
 
 # --- Configuration ---
 # HOST = '127.0.0.1'  # Localhost
@@ -70,12 +71,25 @@ def handle_client(conn, addr):
         temp_file_path = os.path.join(TEMP_DIR, os.path.basename(filename))
         with open(temp_file_path, 'wb') as f:
             received_bytes = 0
+            # # --- Start of new progress bar logic ---
+            # sys.stdout.write(f"Receiving '{filename}': [")
+            # progress_milestone = 0
+
             while received_bytes < filesize:
                 data = conn.recv(4096)
                 if not data:
                     break
                 f.write(data)
                 received_bytes += len(data)
+
+            #     progress = (received_bytes / filesize) * 10 # 10 dots for 100%
+            #     while progress > progress_milestone:
+            #         sys.stdout.write(".")
+            #         sys.stdout.flush()
+            #         progress_milestone += 1
+
+            # sys.stdout.write("] 100%\n") # Finalize progress bar
+            # --- End of new progress bar logic ---
 
         if received_bytes == filesize:
             # 3. Scan the file
@@ -100,8 +114,31 @@ def main():
     setup_environment()
     print(f"ClamAV Agent listening on {HOST}:{PORT}")
 
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    except Exception as e:
+        print(f"[FATAL ERROR] Failed to create socket. Error: {e}")
+        return # Cannot continue if socket creation fails
+
+    # --- Specific debugging for the bind() call ---
+    try:
+        print(f"Attempting to bind to address {HOST} on port {PORT}...")
         s.bind((HOST, PORT))
+        print(f"[SUCCESS] Server bound successfully to {HOST}:{PORT}.")
+    except Exception as e:
+        print(f"\n[FATAL ERROR] Could not bind to {HOST}:{PORT}. Error: {e}")
+        print("This error usually means one of two things:")
+        print(f"1. Another program is already running on port {PORT}.")
+        print("2. The host address you are trying to use is not valid on this machine.")
+        s.close()
+        return # Exit the program if binding fails
+    # --- End of specific debugging ---
+
+    print(f"ClamAV Agent is now listening for connections...")
+
+    # Use the successfully bound socket in a 'with' statement to ensure it's closed
+    with s:
         s.listen()
 
         while True:
@@ -109,6 +146,7 @@ def main():
                 conn, addr = s.accept()
                 # In a real-world server, you would use threading or asyncio
                 # to handle multiple clients concurrently.
+                print(f"\nAccepted connection from {addr}")
                 handle_client(conn, addr)
             except KeyboardInterrupt:
                 print("\nServer is shutting down.")

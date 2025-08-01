@@ -5,10 +5,8 @@ import fnmatch
 # import glob
 import re
 import configparser
+import sys
 
-# REMOVE the old global constants for ClamAV
-# CLAMAV_HOST = '127.0.0.1'
-# CLAMAV_PORT = 6789
 BUFFER_SIZE = 4096
 
 class RawFTPClient:
@@ -602,11 +600,27 @@ class RawFTPClient:
                 s.close()
                 return "ERROR: ClamAVAgent did not acknowledge metadata."
             with open(filepath, 'rb') as f:
+                # --- Start of new progress bar logic ---
+                bytes_sent = 0
+                sys.stdout.write(f"Scanning '{os.path.basename(filepath)}': [")
+                progress_milestone = 0
+
                 while True:
                     data = f.read(BUFFER_SIZE)
                     if not data:
                         break
                     s.sendall(data)
+                    bytes_sent += len(data)
+
+                    # Update progress bar logic
+                    progress = (bytes_sent / filesize) * 10 # For 10 dots
+                    while progress > progress_milestone:
+                        sys.stdout.write(".")
+                        sys.stdout.flush()
+                        progress_milestone += 1
+                        
+                sys.stdout.write("] 100%\n") # Finalize progress bar
+                # --- End of new progress bar logic ---
             result = s.recv(1024).decode()
             s.close()
             return result
