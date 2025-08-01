@@ -6,6 +6,8 @@ import fnmatch
 import re
 import configparser
 import sys
+import time       # Ensure time is imported
+import threading  # The key module for this solution
 
 BUFFER_SIZE = 4096
 
@@ -23,6 +25,24 @@ class RawFTPClient:
 
         self.active_data_listener = None
         self.local_test_mode = False  # Mặc định bật chế độ test local (127.0.0.1)
+
+    def _spinner_animation(self, stop_event):
+        """
+        Displays a spinning character in the console.
+        This function is meant to be run in a separate thread.
+        """
+        spinner_chars = ['|', '/', '-', '\\']
+        i = 0
+        while not stop_event.is_set():
+            char = spinner_chars[i % len(spinner_chars)]
+            # Use carriage return '\r' to move the cursor to the beginning of the line
+            sys.stdout.write(char + '\r')
+            sys.stdout.flush()
+            time.sleep(0.1)
+            i += 1
+        # Clear the spinner character when done
+        sys.stdout.write(' \r')
+        sys.stdout.flush()
 
     # Method to load the configuration
     def load_config(self):
@@ -589,6 +609,11 @@ class RawFTPClient:
         if not self.clamav_host:
             return "ERROR: ClamAV agent address is not configured. Please create a valid config.ini file."
 
+        # START progress bar
+        s = None # Define s here to access it in the finally block
+        spinner_thread = None
+        stop_spinner = threading.Event() # Event to signal the spinner thread to stop
+
         try:
             filesize = os.path.getsize(filepath)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -599,10 +624,14 @@ class RawFTPClient:
             if ack != b"META_OK":
                 s.close()
                 return "ERROR: ClamAVAgent did not acknowledge metadata."
+            
+            # --- Phase 1: Determinate Progress (Uploading) ---
+            sys.stdout.write(f"Uploading '{os.path.basename(filepath)}': [")
+            sys.stdout.flush()
+
             with open(filepath, 'rb') as f:
                 # --- Start of new progress bar logic ---
                 bytes_sent = 0
-                sys.stdout.write(f"Scanning '{os.path.basename(filepath)}': [")
                 progress_milestone = 0
 
                 while True:
@@ -619,13 +648,33 @@ class RawFTPClient:
                         sys.stdout.flush()
                         progress_milestone += 1
                         
-                sys.stdout.write("] 100%\n") # Finalize progress bar
-                # --- End of new progress bar logic ---
+            sys.stdout.write("] 100% ... Uploading ")
+            sys.stdout.flush()
+
+            # --- Phase 2: Indeterminate Progress (Waiting for Scan) ---
+            # Start the spinner thread
+            spinner_thread = threading.Thread(target=self._spinner_animation, args=(stop_spinner,))
+            spinner_thread.start()
+
+            # The main thread blocks here, waiting for the server's response
+            # The spinner thread continues to run in the background
+
             result = s.recv(1024).decode()
-            s.close()
             return result
         except Exception as e:
             return f"ERROR: {str(e)}"
+        finally:
+            # --- Cleanup Phase ---
+            if spinner_thread:
+                # Signal the spinner to stop and wait for it to finish
+                stop_spinner.set()
+                spinner_thread.join()
+            
+            # Print a newline to move to the next line after the progress bar
+            print() 
+
+            if s:
+                s.close()
 
     def help(self):
         print("""
