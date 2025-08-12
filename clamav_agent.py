@@ -3,6 +3,7 @@ import socket
 import subprocess
 import os
 import sys
+import threading
 
 # --- Configuration ---
 # HOST = '127.0.0.1'  # Localhost
@@ -53,7 +54,12 @@ def scan_file(file_path):
         return f"ERROR: {e}"
 
 def handle_client(conn, addr):
-    """Handle a single client connection."""
+    """
+    Handle a single client connection.
+    This function is now run in its own thread for each client.
+    """
+    # Thêm dòng log để biết luồng nào đang xử lý client nào
+    print(f"[Thread for {addr}] Handling connection...")
     try:
         # 1. Receive file metadata (filename and size)
         metadata = conn.recv(1024).decode()
@@ -66,15 +72,12 @@ def handle_client(conn, addr):
 
         # Send acknowledgment to start file transfer
         conn.sendall(b"META_OK")
+        print(f"[Thread for {addr}] Metadata received: filename='{filename}', filesize={filesize} bytes")
 
         # 2. Receive file data
         temp_file_path = os.path.join(TEMP_DIR, os.path.basename(filename))
         with open(temp_file_path, 'wb') as f:
             received_bytes = 0
-            # # --- Start of new progress bar logic ---
-            # sys.stdout.write(f"Receiving '{filename}': [")
-            # progress_milestone = 0
-
             while received_bytes < filesize:
                 data = conn.recv(4096)
                 if not data:
@@ -82,18 +85,11 @@ def handle_client(conn, addr):
                 f.write(data)
                 received_bytes += len(data)
 
-            #     progress = (received_bytes / filesize) * 10 # 10 dots for 100%
-            #     while progress > progress_milestone:
-            #         sys.stdout.write(".")
-            #         sys.stdout.flush()
-            #         progress_milestone += 1
-
-            # sys.stdout.write("] 100%\n") # Finalize progress bar
-            # --- End of new progress bar logic ---
-
         if received_bytes == filesize:
             # 3. Scan the file
+            print(f"[Thread for {addr}] File received. Starting scan for '{filename}'...")
             scan_result = scan_file(temp_file_path)
+            print(f"[Thread for {addr}] Scan finished. Result: {scan_result}")
 
             # 4. Send result back to client
             conn.sendall(scan_result.encode())
@@ -107,6 +103,7 @@ def handle_client(conn, addr):
         # 5. Cleanup
         if 'temp_file_path' in locals() and os.path.exists(temp_file_path):
             os.remove(temp_file_path)
+        print(f"[Thread for {addr}] Connection closed and cleaned up.")
         conn.close()
 
 def main():
@@ -147,7 +144,19 @@ def main():
                 # In a real-world server, you would use threading or asyncio
                 # to handle multiple clients concurrently.
                 print(f"\nAccepted connection from {addr}")
-                handle_client(conn, addr)
+                
+                
+                # [1] Tạo một đối tượng luồng mới
+                client_thread = threading.Thread(
+                    target=handle_client, # Hàm mà luồng sẽ chạy
+                    args=(conn, addr)     # Đối số truyền cho hàm đó
+                )
+                
+                # [2] Đặt luồng làm daemon để tự thoát khi chương trình chính dừng
+                client_thread.daemon = True
+
+                # [3] Bắt đầu luồng. Vòng lặp chính không chờ mà tiếp tục ngay.
+                client_thread.start()
             except KeyboardInterrupt:
                 print("\nServer is shutting down.")
                 break

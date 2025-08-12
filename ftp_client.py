@@ -8,8 +8,32 @@ import configparser
 import sys
 import time       # Ensure time is imported
 import threading  # The key module for this solution
+import logging
 
-BUFFER_SIZE = 4096
+BUFFER_SIZE = 4096 # 4KB
+
+# --- Setup for Debug Logging to a File (place this at the top of your file, once) ---
+# Create a logger specific for debug messages
+debug_logger = logging.getLogger('ftp_client.debug')
+debug_logger.setLevel(logging.DEBUG)  # Set the logging level to DEBUG
+
+# Create a file handler for debug messages.
+# mode='w' will create a new empty file each time the script is run.
+# If you wanted to keep adding to the same file, you would use mode='a' (for append).
+debug_handler = logging.FileHandler('debug.log', mode='w')
+debug_handler.setLevel(logging.DEBUG) # Ensure this handler processes DEBUG level messages
+
+# Define the format for your debug messages, including a timestamp
+formatter = logging.Formatter('%(asctime)s - [%(name)s] - %(levelname)s: %(message)s')
+debug_handler.setFormatter(formatter)
+
+# Add the handler to the logger, but only if it doesn't already have one
+if not debug_logger.handlers:
+    debug_logger.addHandler(debug_handler)
+
+# Prevent messages from being propagated to the root logger
+debug_logger.propagate = False
+# --- End of Setup ---
 
 class RawFTPClient:
     def __init__(self):
@@ -36,12 +60,12 @@ class RawFTPClient:
         while not stop_event.is_set():
             char = spinner_chars[i % len(spinner_chars)]
             # Use carriage return '\r' to move the cursor to the beginning of the line
-            sys.stdout.write(char + '\r')
+            sys.stdout.write(char + '\b')
             sys.stdout.flush()
             time.sleep(0.1)
             i += 1
         # Clear the spinner character when done
-        sys.stdout.write(' \r')
+        sys.stdout.write(' \b')
         sys.stdout.flush()
 
     # Method to load the configuration
@@ -134,7 +158,7 @@ class RawFTPClient:
             try:
                 self._send_cmd("EPSV")
                 resp = self._recv_response_blocking()
-                print(f"[DEBUG] EPSV response: {resp}")
+                debug_logger.debug(f"EPSV response: {resp}")
 
                 if not resp.startswith('229'):
                     raise Exception("Server does not support EPSV, falling back.")
@@ -155,7 +179,7 @@ class RawFTPClient:
                 
                 self._send_cmd("PASV")
                 resp = self._recv_response_blocking()
-                print(f"[DEBUG] PASV response: {resp}")  # debug thêm
+                debug_logger.debug(f"[DEBUG] PASV response: {resp}")  # debug thêm
                 if not resp.startswith('227'):
                     raise Exception(f"PASV failed: {resp}")
                 match = re.search(r'\((.*?)\)', resp)
@@ -171,7 +195,7 @@ class RawFTPClient:
                 return data_sock
         
         else:
-            # print("[DEBUG] Entering Active Mode data connection setup...")
+            # debug_logger.debug("[DEBUG] Entering Active Mode data connection setup...")
 
             self.active_data_listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.active_data_listener.bind(('', 0))
@@ -191,7 +215,7 @@ class RawFTPClient:
                     s.close()
 
             port = self.active_data_listener.getsockname()[1]
-            print(f"[DEBUG] Active mode: Sending PORT with IP = {ip}, Port = {port}")
+            debug_logger.debug(f"[DEBUG] Active mode: Sending PORT with IP = {ip}, Port = {port}")
             ip_nums = ip.split('.')
             p1 = port >> 8
             p2 = port & 0xFF
@@ -361,7 +385,7 @@ class RawFTPClient:
                         data_sock.close()
                     return
 
-            # print(f"[DEBUG] Server is ready to send. Receiving data into '{local_path}'...")
+            # debug_logger.debug(f"[DEBUG] Server is ready to send. Receiving data into '{local_path}'...")
             os.makedirs(os.path.dirname(local_path) or '.', exist_ok=True)
             with open(local_path, 'wb') as f:
                 while True:
@@ -626,14 +650,14 @@ class RawFTPClient:
                 return "ERROR: ClamAVAgent did not acknowledge metadata."
             
             # --- Phase 1: Determinate Progress (Uploading) ---
-            sys.stdout.write(f"Uploading '{os.path.basename(filepath)}': [")
+            bytes_sent = 0
+            progress_bar_length = 50
+            send_pretext = f"Sending to ClamAV: '{os.path.basename(filepath)}':"
+
+            sys.stdout.write(send_pretext)
             sys.stdout.flush()
 
             with open(filepath, 'rb') as f:
-                # --- Start of new progress bar logic ---
-                bytes_sent = 0
-                progress_milestone = 0
-
                 while True:
                     data = f.read(BUFFER_SIZE)
                     if not data:
@@ -641,37 +665,61 @@ class RawFTPClient:
                     s.sendall(data)
                     bytes_sent += len(data)
 
-                    # Update progress bar logic
-                    progress = (bytes_sent / filesize) * 10 # For 10 dots
-                    while progress > progress_milestone:
-                        sys.stdout.write(".")
-                        sys.stdout.flush()
-                        progress_milestone += 1
+                    # Calculate progress
+                    percent_complete = (bytes_sent / filesize) * 100
+                    filled_length = int(progress_bar_length * bytes_sent // filesize)
+                    bar = '█' * filled_length + '-' * (progress_bar_length - filled_length)
                         
-            sys.stdout.write("] 100% ... Uploading ")
-            sys.stdout.flush()
-
+                    progress_string = f'\r{send_pretext} |{bar}| {percent_complete:.2f}%'
+                    sys.stdout.write(progress_string)
+                    sys.stdout.flush()
+                    
+                    # Add a small delay to visualize the progress
+                    time.sleep(0.01)
+                    
             # --- Phase 2: Indeterminate Progress (Waiting for Scan) ---
             # Start the spinner thread
+            sys.stdout.write('\n')
             spinner_thread = threading.Thread(target=self._spinner_animation, args=(stop_spinner,))
+            sys.stdout.write("Waiting for scan result: ")
             spinner_thread.start()
 
             # The main thread blocks here, waiting for the server's response
             # The spinner thread continues to run in the background
 
             result = s.recv(1024).decode()
+            
+            # Stop the spinner and print "Done" on the same line.
+            if spinner_thread.is_alive():
+                stop_spinner.set()
+                spinner_thread.join()
+                sys.stdout.write("Done\n")
+                sys.stdout.flush()
+            
+            # Explain the result to the user
+            if result == "OK":
+                print(f"Result OK: The file is safe.")
+            elif result == "INFECTED":
+                print(f"Result INFECTED: The file contains virus.")
+            elif result.startswith("ERROR"):
+                print(f"Result ERROR: {result}")
+            else:
+                print(f"Result UNKNOWN: {result}")
+
             return result
         except Exception as e:
+            # On error, ensure the spinner is stopped before printing the error
+            if spinner_thread and spinner_thread.is_alive():
+                stop_spinner.set()
+                spinner_thread.join()
+                sys.stdout.write("Failed\n")
             return f"ERROR: {str(e)}"
         finally:
             # --- Cleanup Phase ---
-            if spinner_thread:
-                # Signal the spinner to stop and wait for it to finish
+            # Failsafe to ensure the thread is stopped, though it should be already.
+            if spinner_thread and spinner_thread.is_alive():
                 stop_spinner.set()
                 spinner_thread.join()
-            
-            # Print a newline to move to the next line after the progress bar
-            print() 
 
             if s:
                 s.close()
