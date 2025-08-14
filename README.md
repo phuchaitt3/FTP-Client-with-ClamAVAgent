@@ -245,6 +245,20 @@ Download a single file from the server:
 
 All modes are supported with optional destination.
 
+**Example:**
+
+If you run:
+
+```bash
+ftp> get safe_document.txt D:\TestSocket 
+
+After download completes, the client will display extra information including:
+
+[DEBUG] EPSV response: 229 Entering Extended Passive Mode (|||50515|)
+226 Transfer complete.
+Downloaded safe_document.txt --> D:\TestSocket\safe_document.txt
+
+
 ---
 
 ### ✅ `mget`
