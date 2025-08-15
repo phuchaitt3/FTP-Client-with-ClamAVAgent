@@ -37,6 +37,21 @@ debug_logger.propagate = False
 
 class RawFTPClient:
     def __init__(self):
+        """Initializes the FTP client instance with default settings.
+
+        Attributes:
+            control_sock (socket.socket|None): The control connection socket to the FTP server.
+            passive_mode (bool): True if passive mode is enabled, False for active mode.
+            transfer_mode (str): File transfer type, either 'binary' or 'ascii'.
+            prompt (bool): If True, prompt user before each transfer in mget/mput.
+            connected (bool): Connection status to the server.
+            host (str|None): The connected FTP server's hostname or IP.
+            clamav_host (str|None): Host for ClamAV scanning agent.
+            clamav_port (int|None): Port for ClamAV scanning agent.
+            active_data_listener (socket.socket|None): Listening socket for active mode.
+            local_test_mode (bool): If True, active mode will bind to 127.0.0.1 for local testing.
+        """
+        
         self.control_sock = None
         self.passive_mode = True
         self.transfer_mode = 'binary'
@@ -137,6 +152,12 @@ class RawFTPClient:
         self.cd('ftp')
 
     def disconnect(self):
+        """Disconnects from the FTP server.
+
+        Sends the QUIT command to the server, closes the control socket, and updates
+        connection state. Any errors during QUIT or close are suppressed to prevent
+        crashing.
+        """
         if self.control_sock:
             try:
                 self._send_cmd("QUIT")
@@ -165,6 +186,17 @@ class RawFTPClient:
         self.control_sock.sendall((cmd + '\r\n').encode())
 
     def _recv_response_blocking(self):
+        """Receives a response from the FTP server, blocking until complete.
+
+        Waits for data on the control socket until a complete FTP response is received.
+
+        Returns:
+            str: The decoded server response.
+
+        Exceptions:
+            socket.timeout: If no response is received within the set timeout.
+            Exception: Any socket-related errors.
+        """
         self.control_sock.settimeout(5)
         try:
             data = b""
@@ -185,6 +217,16 @@ class RawFTPClient:
             return f"[ERROR] {str(e)}"
 
     def _open_data_connection(self):
+        """Opens a data connection for file transfers or directory listings.
+
+        Chooses passive mode (EPSV/PASV) or active mode (PORT) based on configuration.
+
+        Returns:
+            socket.socket|None: The data connection socket in passive mode, or None in active mode (waiting for accept).
+
+        Raises:
+            Exception: If neither EPSV nor PASV succeeds in passive mode, or if PORT fails in active mode.
+        """
         if self.passive_mode:
             # --- Modern Approach: Try EPSV first ---
             try:
@@ -277,21 +319,25 @@ class RawFTPClient:
             return None  # chủ động trả về None để phân biệt
 
     def status(self):
+        """Prints the current FTP client status, including mode and connection state."""
         print("Passive Mode:", self.passive_mode)
         print("Transfer Mode:", self.transfer_mode)
         print("Connected:", self.connected)
 
     def toggle_prompt(self):
+        """Toggles the user prompt for mget/mput operations."""
         self.prompt = not self.prompt
         print(f"Prompt mode {'enabled' if self.prompt else 'disabled'}")
 
     def set_ascii(self):
+        """Sets the file transfer mode to ASCII and informs the server."""
         self.transfer_mode = 'ascii'
         self._send_cmd("TYPE A")
         resp = self._recv_response_blocking()
         print(resp if resp else "Transfer mode set to ASCII")
 
     def set_binary(self):
+        """Sets the file transfer mode to Binary and informs the server."""
         self.transfer_mode = 'binary'
         self._send_cmd("TYPE I")
         resp = self._recv_response_blocking()
@@ -299,10 +345,16 @@ class RawFTPClient:
 
 
     def toggle_passive(self):
+        """Toggles passive mode on or off."""
         self.passive_mode = not self.passive_mode
         print(f"Passive mode {'enabled' if self.passive_mode else 'disabled'}")
 
     def ls(self):
+        """Lists files on the server in the current working directory.
+
+        Uses LIST command over a data connection in passive or active mode.
+        Prints the directory listing to stdout.
+        """
         try:
             if self.passive_mode:
                 data_sock = self._open_data_connection()
@@ -345,6 +397,11 @@ class RawFTPClient:
             print(f"[ERROR] {str(e)}")
 
     def cd(self, path):
+        """Changes the current working directory on the server.
+
+        Args:
+            path (str): Target directory path on the server.
+        """
         self._send_cmd(f"CWD {path}")
         resp = self._recv_response_blocking()
         if resp.startswith("250"):
@@ -354,10 +411,16 @@ class RawFTPClient:
 
 
     def pwd(self):
+        """Prints the current working directory on the server."""
         self._send_cmd("PWD")
         print(self._recv_response_blocking())
 
     def mkdir(self, dirname):
+        """Creates a directory on the server.
+
+        Args:
+            dirname (str): Name of the directory to create.
+        """
         self._send_cmd(f"MKD {dirname}")
         resp = self._recv_response_blocking()
         # if resp.startswith("257"):
@@ -367,6 +430,11 @@ class RawFTPClient:
         print(f"Response: {resp}")
 
     def rmdir(self, dirname):
+        """Removes a directory on the server.
+
+        Args:
+            dirname (str): Name of the directory to remove.
+        """
         self._send_cmd(f"RMD {dirname}")
         resp = self._recv_response_blocking()
         print(f"Response: {resp}")
@@ -376,10 +444,21 @@ class RawFTPClient:
         #     print(f"[ERROR] {resp}")
 
     def delete(self, filename):
+        """Deletes a file on the server.
+
+        Args:
+            filename (str): Name of the file to delete.
+        """
         self._send_cmd(f"DELE {filename}")
         print(self._recv_response_blocking())
 
     def rename(self, from_name, to_name):
+        """Renames a file on the server.
+
+        Args:
+            from_name (str): Current file name.
+            to_name (str): New file name.
+        """
         self._send_cmd(f"RNFR {from_name}")
         resp = self._recv_response_blocking()
         if resp.startswith('350'):
@@ -389,6 +468,12 @@ class RawFTPClient:
             print(resp)
 
     def get(self, filename, destination_path=None):
+        """Downloads a file from the server.
+
+        Args:
+            filename (str): Name of the file to download.
+            destination_path (str|None): Local path or directory to save the file.
+        """
         if destination_path:
             if os.path.isdir(destination_path):
                 local_path = os.path.join(destination_path, os.path.basename(filename))
@@ -450,6 +535,11 @@ class RawFTPClient:
             print(f"[ERROR] {str(e)}")
 
     def make_remote_dirs(self, path):
+        """Creates nested directories on the server.
+
+        Args:
+            path (str): Path to create on the server.
+        """
         dirs = path.replace("\\", "/").split("/")
         curr = ""
         for d in dirs:
@@ -463,6 +553,12 @@ class RawFTPClient:
                     print(f"[WARN] Failed to create remote dir '{curr}': {resp}")
 
     def put(self, filepath, remote_rel_path=""):
+        """Uploads a file to the server after scanning with ClamAV.
+
+        Args:
+            filepath (str): Local path of the file to upload.
+            remote_rel_path (str): Relative remote path to store the file.
+        """
         if not os.path.isfile(filepath):
             print(f"[ERROR] File '{filepath}' does not exist.")
             return
@@ -531,6 +627,11 @@ class RawFTPClient:
             print(f"[ERROR] {str(e)}")
 
     def mput(self, args):
+        """Uploads multiple files matching a pattern.
+
+        Args:
+            args (str): File pattern or directory for upload.
+        """
         import glob
         parts = args.strip().split()
         uploaded = set()
@@ -560,6 +661,11 @@ class RawFTPClient:
 
 
     def mget(self, args):
+        """Downloads multiple files matching a pattern or directory.
+
+        Args:
+            args (str): Remote file pattern or directory.
+        """
         parts = args.strip().split()
         dest_dir = "."
 
@@ -693,6 +799,14 @@ class RawFTPClient:
                     self.get(target, local_file)
 
     def scan_with_clamav(self, filepath):
+        """Scans a file with ClamAV before upload.
+
+        Args:
+            filepath (str): Path to the local file.
+
+        Returns:
+            str: Scan result string.
+        """
         if not self.clamav_host:
             return "ERROR: ClamAV agent address is not configured. Please create a valid config.ini file."
 
@@ -788,6 +902,7 @@ class RawFTPClient:
                 s.close()
 
     def help(self):
+        """Prints the list of supported FTP client commands."""
         print("""
 Supported Commands:
   open <host> [port]        Connect to FTP server
