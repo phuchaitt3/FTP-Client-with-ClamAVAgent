@@ -26,6 +26,11 @@ Uploaded todo_tasks.txt -> todo_tasks.txt
 226 Transfer complete.
 Downloaded test_log.txt -> E:\1.git_projs\MMT_proj1\test_files\test_log.txt
 
+# recv
+- ftp> recv text1.txt
+226 Transfer complete.
+Downloaded text1.txt -> text1.txt
+
 # mget
 - !NOTE: Bug ZoomInstallerFull - Copy -> Download file Copy.exe? (y/n):
 - mget *.exe *.txt E:\1.downloads\garbage\filezilla\
@@ -63,7 +68,24 @@ Passive Mode: True
 Transfer Mode: binary
 Connected: True
 
-# help
+# close
+- ftp> close
+221 Goodbye.
+Disconnected from server.
+ftp> open 146.190.91.115 21
+Username: sinhvien
+Password: 12345678
+Connected to 146.190.91.115:21 as sinhvien
+[OK] 250 Directory successfully changed.
+
+# bye
+- ftp> close
+221 Goodbye.
+Disconnected from server.
+ftp> bye
+(base) PS D:\1.git_projs\FTP-Client-with-ClamAVAgent> 
+
+# help/?
 + help
 
 ---ACTIVE---

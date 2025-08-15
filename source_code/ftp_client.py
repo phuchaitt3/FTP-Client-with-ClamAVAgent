@@ -87,8 +87,16 @@ class RawFTPClient:
     def load_config(self):
         """Loads configuration from config.ini file."""
         config = configparser.ConfigParser()
+        # Get the absolute path to the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Join the script's directory with the config file name
+        config_path = os.path.join(script_dir, 'config.ini')
         try:
-            config.read_file(open('config.ini'))
+            # The config.read() method can directly take the path
+            if not config.read(config_path):
+                # config.read() returns an empty list if the file is not found or is empty
+                raise FileNotFoundError
+            
             self.clamav_host = config['DEFAULT'].get('clamav_host')
             self.clamav_port = config['DEFAULT'].getint('clamav_port')
 
@@ -126,7 +134,8 @@ class RawFTPClient:
             Exception: If the login attempt fails (e.g., incorrect credentials or server error).
             socket.error: If there's an issue establishing the socket connection.
         """
-        self.host = host  # Save for later use
+        # Set FTP server host
+        self.host = host
         # socket.AF_INET: Chỉ định rằng đây là một socket internet sử dụng địa chỉ IPv4.
         # socket.SOCK_STREAM: Sử dụng TCP, FTP là truyền file cần độ tin cậy
         self.control_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -149,7 +158,8 @@ class RawFTPClient:
         self.connected = True
         print(f"Connected to {host}:{port} as {user}")
 
-        self.cd('ftp')
+        if not self.local_test_mode and self.host != '127.0.0.1':
+            self.cd('ftp')
 
     def disconnect(self):
         """Disconnects from the FTP server.
@@ -322,7 +332,7 @@ class RawFTPClient:
         """Prints the current FTP client status, including mode and connection state."""
         print("Passive Mode:", self.passive_mode)
         print("Transfer Mode:", self.transfer_mode)
-        print("Connected:", self.connected)
+        print("Test Mode:", "On" if self.local_test_mode else "Off")
 
     def toggle_prompt(self):
         """Toggles the user prompt for mget/mput operations."""
@@ -334,14 +344,30 @@ class RawFTPClient:
         self.transfer_mode = 'ascii'
         self._send_cmd("TYPE A")
         resp = self._recv_response_blocking()
-        print(resp if resp else "Transfer mode set to ASCII")
+        
+        # Check if the server confirmed the command successfully (response code 200)
+        if resp.startswith('200'):
+            # Only change the client's internal state AFTER server confirmation
+            self.transfer_mode = 'ascii'
+            print("[OK] Transfer mode set to ASCII.")
+        else:
+            # If it fails, inform the user with the server's error message
+            print(f"[ERROR] Failed to set ASCII mode: {resp}")
 
     def set_binary(self):
         """Sets the file transfer mode to Binary and informs the server."""
         self.transfer_mode = 'binary'
         self._send_cmd("TYPE I")
         resp = self._recv_response_blocking()
-        print(resp if resp else "Transfer mode set to Binary")
+
+        # Check if the server confirmed the command successfully (response code 200)
+        if resp.startswith('200'):
+            # Only change the client's internal state AFTER server confirmation
+            self.transfer_mode = 'binary'
+            print("[OK] Transfer mode set to Binary.")
+        else:
+            # If it fails, inform the user with the server's error message
+            print(f"[ERROR] Failed to set Binary mode: {resp}")
 
 
     def toggle_passive(self):
@@ -919,12 +945,13 @@ Supported Commands:
   rmdir <name>              Remove server directory
   delete <file>             Delete file on server
   rename <from> <to>        Rename file on server
-  get <file> [dest]         Download file
+  get, recv <file> [dest]         Download file
   mget <pattern> [dest]     Download multiple files
   put <file>                Upload file (scan first)
   mput <pattern>            Upload multiple files (scan all)
   help, ?                   Show this help
   quit, bye                 Exit the client
+  testmode on/off           Set test mode: on-local/off-remote
 """)
 
 def main():
