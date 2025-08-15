@@ -119,7 +119,8 @@ class RawFTPClient:
             Exception: If the login attempt fails (e.g., incorrect credentials or server error).
             socket.error: If there's an issue establishing the socket connection.
         """
-        self.host = host  # Save for later use
+        # Set FTP server host
+        self.host = host
         # socket.AF_INET: Chỉ định rằng đây là một socket internet sử dụng địa chỉ IPv4.
         # socket.SOCK_STREAM: Sử dụng TCP, FTP là truyền file cần độ tin cậy
         self.control_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -142,7 +143,8 @@ class RawFTPClient:
         self.connected = True
         print(f"Connected to {host}:{port} as {user}")
 
-        self.cd('ftp')
+        if not self.local_test_mode and self.host != '127.0.0.1':
+            self.cd('ftp')
 
     def disconnect(self):
         if self.control_sock:
@@ -294,16 +296,32 @@ class RawFTPClient:
         print(f"Prompt mode {'enabled' if self.prompt else 'disabled'}")
 
     def set_ascii(self):
-        self.transfer_mode = 'ascii'
+        """Sets the transfer mode to ASCII."""
         self._send_cmd("TYPE A")
         resp = self._recv_response_blocking()
-        print(resp if resp else "Transfer mode set to ASCII")
+        
+        # Check if the server confirmed the command successfully (response code 200)
+        if resp.startswith('200'):
+            # Only change the client's internal state AFTER server confirmation
+            self.transfer_mode = 'ascii'
+            print("[OK] Transfer mode set to ASCII.")
+        else:
+            # If it fails, inform the user with the server's error message
+            print(f"[ERROR] Failed to set ASCII mode: {resp}")
 
     def set_binary(self):
-        self.transfer_mode = 'binary'
+        """Sets the transfer mode to Binary."""
         self._send_cmd("TYPE I")
         resp = self._recv_response_blocking()
-        print(resp if resp else "Transfer mode set to Binary")
+
+        # Check if the server confirmed the command successfully (response code 200)
+        if resp.startswith('200'):
+            # Only change the client's internal state AFTER server confirmation
+            self.transfer_mode = 'binary'
+            print("[OK] Transfer mode set to Binary.")
+        else:
+            # If it fails, inform the user with the server's error message
+            print(f"[ERROR] Failed to set Binary mode: {resp}")
 
 
     def toggle_passive(self):

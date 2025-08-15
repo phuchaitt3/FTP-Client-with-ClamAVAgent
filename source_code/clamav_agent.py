@@ -109,7 +109,7 @@ def handle_client(conn, addr):
 def main():
     """Main function to run the ClamAV agent server."""
     setup_environment()
-    print(f"ClamAV Agent listening on {HOST}:{PORT}")
+    print(f"ClamAV Host: {HOST}, Port: {PORT}")
 
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
