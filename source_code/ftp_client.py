@@ -287,9 +287,10 @@ class RawFTPClient:
             return None  # chủ động trả về None để phân biệt
 
     def status(self):
+        print("Connected:", self.connected)
         print("Passive Mode:", self.passive_mode)
         print("Transfer Mode:", self.transfer_mode)
-        print("Connected:", self.connected)
+        print("Test Mode:", "On" if self.local_test_mode else "Off")
 
     def toggle_prompt(self):
         self.prompt = not self.prompt
@@ -830,12 +831,13 @@ Supported Commands:
   rmdir <name>              Remove server directory
   delete <file>             Delete file on server
   rename <from> <to>        Rename file on server
-  get <file> [dest]         Download file
+  get, recv <file> [dest]         Download file
   mget <pattern> [dest]     Download multiple files
   put <file>                Upload file (scan first)
   mput <pattern>            Upload multiple files (scan all)
   help, ?                   Show this help
   quit, bye                 Exit the client
+  testmode on/off           Set test mode: on-local/off-remote
 """)
 
 def main():
