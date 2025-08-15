@@ -95,8 +95,27 @@ class RawFTPClient:
         print(f"[OK] ClamAV agent address set to {self.clamav_host}:{self.clamav_port}")
 
     def connect(self, host, port=21):
-        self.host = host
+        """
+        Establishes a connection to the FTP server and handles user authentication.
+
+        This method initializes the control connection socket, connects to the
+        specified host and port, prompts the user for credentials, and
+        attempts to log in. Upon successful login, it sets the client's
+        connection status and changes the working directory to 'ftp' on the server.
+
+        Args:
+            host (str): The hostname or IP address of the FTP server.
+            port (int, optional): The port number to connect to. Defaults to 21 (standard FTP port).
+
+        Raises:
+            Exception: If the login attempt fails (e.g., incorrect credentials or server error).
+            socket.error: If there's an issue establishing the socket connection.
+        """
+        self.host = host  # Save for later use
+        # socket.AF_INET: Chỉ định rằng đây là một socket internet sử dụng địa chỉ IPv4.
+        # socket.SOCK_STREAM: Sử dụng TCP, FTP là truyền file cần độ tin cậy
         self.control_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Thiết lập kết nối TCP đến địa chỉ và cổng của máy chủ FTP
         self.control_sock.connect((host, port))
         self._recv_response_blocking()
 
@@ -130,6 +149,19 @@ class RawFTPClient:
             print("Disconnected from server.")
 
     def _send_cmd(self, cmd):
+        """
+        Sends a command string to the FTP server over the control connection.
+
+        This is a helper method that appends the necessary FTP line ending (\r\n),
+        encodes the command string into bytes, and then sends it entirely
+        to the server through the control socket.
+
+        Args:
+            cmd (str): The FTP command string to send (e.g., "USER myuser", "PASV", "RETR myfile.txt").
+        """
+        # helper method đóng vai trò là giao diện chính để gửi các lệnh điều khiển từ client đến máy chủ FTP
+        # Tiêu chuẩn FTP: mỗi lệnh phải được kết thúc bằng một cặp ký tự Carriage Return (CR) theo sau bởi Line Feed (LF).
+        # Encode cmd string thành bytes để gửi
         self.control_sock.sendall((cmd + '\r\n').encode())
 
     def _recv_response_blocking(self):
@@ -193,41 +225,56 @@ class RawFTPClient:
                 data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 data_sock.connect((ip, port))
                 return data_sock
-        
+        # Active Mode
         else:
-            # debug_logger.debug("[DEBUG] Entering Active Mode data connection setup...")
-
-            self.active_data_listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            self.active_data_listener.bind(('', 0))
-            self.active_data_listener.settimeout(10)  # tránh treo mãi nếu server không connect lại
-            self.active_data_listener.listen(1)
-
             if self.local_test_mode:
+                # Dùng loopback IP cho test mode
+                # Khi này FTP client và FTP server đều chạy trên cùng một máy
                 ip = "127.0.0.1"
             else:
+                # Tạo temporary UDP socket để lấy private IP của FTP client
                 s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
                 try:
-                    # 8.8.8.8 is the IP address for Google's public DNS service
+                    # Kết nối ra ngoài (Google DNS)
                     s.connect(("8.8.8.8", 80))
-                    # Lấy IP của máy tính đang chạy mã này
+                    # Lấy IP của chính socket mà hệ điều hành dùng để gửi gói tin ra (Private IP của máy)
                     ip = s.getsockname()[0]
                 finally:
+                    # Đã lấy được private IP, đóng kết nối
                     s.close()
-
+                    
+            # Tạo TCP socket
+            self.active_data_listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            # Ràng buộc nó với một cổng ngẫu nhiên do hệ điều hành cấp phát
+            self.active_data_listener.bind(('', 0))
+            # Bắt đầu lắng nghe, settimeout tránh treo mãi nếu server không connect lại
+            self.active_data_listener.settimeout(10)
+            # Cho phép 1 kết nối
+            self.active_data_listener.listen(1)
+            # Lấy port ngẫu nhiên được tạo trước đó
             port = self.active_data_listener.getsockname()[1]
             debug_logger.debug(f"[DEBUG] Active mode: Sending PORT with IP = {ip}, Port = {port}")
+            
+            # Nếu ip là "192.168.1.10", thì ip.split('.') sẽ trả về ['192', '168', '1', '10']
+            # Lệnh PORT trong FTP yêu cầu địa chỉ IP được truyền dưới dạng bốn số nguyên được phân tách bằng dấu phẩy
             ip_nums = ip.split('.')
+            # p1 là "byte cao" (most significant byte) của port
             p1 = port >> 8
+            # p2 là "byte thấp" (least significant byte) của port
             p2 = port & 0xFF
 
+            # Lệnh PORT: gửi từ FTP client đến FTP server khi client muốn thiết lập một kênh dữ liệu ở chế độ Active.
+            # Server sẽ tính lại port từ p1 và p2: port = (p1 * 256) + p2
             self._send_cmd(f"PORT {','.join(ip_nums)},{p1},{p2}")
             resp = self._recv_response_blocking()
+            
+            # "200 Command okay."
             if not resp.startswith('200'):
+                # Clean up nếu connection không thành công
                 self.active_data_listener.close()
                 self.active_data_listener = None
                 raise Exception(f"PORT failed: {resp}")
             return None  # chủ động trả về None để phân biệt
-
 
     def status(self):
         print("Passive Mode:", self.passive_mode)
@@ -436,33 +483,49 @@ class RawFTPClient:
                 if not resp.startswith('150'):
                     print(f"[ERROR] {resp}")
                     return
+            # Put - Active mode
             else:
+                # Thiết lập kênh Active tới FTP client
                 self._open_data_connection()
+                # Lệnh này yêu cầu máy chủ tạo hoặc ghi đè một file trên hệ thống của nó với tên là <remote_path> và chuẩn bị nhận dữ liệu cho file đó.
+                # STOR: client gửi data
                 self._send_cmd(f"STOR {remote_path}")  # Gửi STOR TRƯỚC khi accept
                 resp = self._recv_response_blocking()
                 if not resp.startswith('150'):
                     print(f"[ERROR] {resp}")
                     return
                 try:
+                    # Chặn thực thi chương trình cho đến khi máy chủ FTP tạo một kết nối đến socket đang lắng nghe của client
                     data_sock, _ = self.active_data_listener.accept()
+                # Cơ chế khi chờ quá lâu
                 except socket.timeout:
                     print("[ERROR] Timeout waiting for server to connect in active mode.")
                     self.active_data_listener.close()
                     self.active_data_listener = None
                     return
+                # Socket từ client đến server không cần thiết nữa, chỉ gửi dữ liệu qua socket từ server tới client
                 self.active_data_listener.close()
                 self.active_data_listener = None
 
+            # Client mở file cục bộ (filepath) ở chế độ nhị phân ('rb')
             with open(filepath, 'rb') as f:
                 while True:
+                    # Trong vòng lặp, client đọc từng khối dữ liệu (BUFFER_SIZE bytes) từ file.
                     data = f.read(BUFFER_SIZE)
                     if not data:
                         break
                     if self.transfer_mode == 'ascii':
+                        # Nếu transfer_mode là ascii, thay thế \n (Line Feed) bằng cặp \r\n (Carriage Return + Line Feed). 
+                        # Đây là yêu cầu của FTP khi truyền file văn bản ở chế độ ASCII để đảm bảo tính tương thích giữa các OS.
                         data = data.replace(b'\n', b'\r\n')
+                    # Gửi data
                     data_sock.sendall(data)
+            # Đóng data channel khi đã hoàn tất gửi
             data_sock.close()
+            
+            # Phản hồi từ server
             print(self._recv_response_blocking())
+            # In kết quả ra terminal cho user
             print(f"Uploaded {filepath} -> {remote_path}")
         except Exception as e:
             print(f"[ERROR] {str(e)}")
