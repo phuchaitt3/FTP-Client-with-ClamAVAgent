@@ -820,7 +820,7 @@ def main():
                     print("[ERROR] Usage: rename <from> <to>")
                 else:
                     client.rename(parts[1], parts[2])
-            elif cmd == 'get':
+            elif cmd in ('get', 'recv'):
                 if len(parts) == 2:
                     client.get(parts[1])
                 elif len(parts) == 3:
