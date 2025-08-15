@@ -72,8 +72,16 @@ class RawFTPClient:
     def load_config(self):
         """Loads configuration from config.ini file."""
         config = configparser.ConfigParser()
+        # Get the absolute path to the directory where this script is located
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Join the script's directory with the config file name
+        config_path = os.path.join(script_dir, 'config.ini')
         try:
-            config.read_file(open('config.ini'))
+            # The config.read() method can directly take the path
+            if not config.read(config_path):
+                # config.read() returns an empty list if the file is not found or is empty
+                raise FileNotFoundError
+            
             self.clamav_host = config['DEFAULT'].get('clamav_host')
             self.clamav_port = config['DEFAULT'].getint('clamav_port')
 
