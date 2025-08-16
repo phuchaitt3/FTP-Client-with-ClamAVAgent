@@ -99,7 +99,8 @@ class RawFTPClient:
 
     # Method to load the configuration
     def load_config(self):
-        """Loads configuration from config.ini file."""
+        """Loads configuration for ClamAV from config.ini file."""
+        # Initialize the config parser
         config = configparser.ConfigParser()
         # Get the absolute path to the directory where this script is located
         script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -969,17 +970,27 @@ Supported Commands:
 """)
 
 def main():
+    # 1. Initialize the FTP client with default settings
     client = RawFTPClient()
+    # 2. Load IP and port of ClamAV from config.ini
     client.load_config()
 
+    # 3. Loop to run multiple commands
     while True:
         try:
+            # Print "ftp> " to terminal and read command
             command = input("ftp> ").strip()
+            
+            # If empty command, skip
             if not command:
                 continue
+            
+            # Split the command by space
             parts = command.split()
+            # Instruction is the first part
             cmd = parts[0].lower()
 
+            # Many if-elses to map instruction string to function
             if cmd in ('quit', 'bye'):
                 client.disconnect()
                 break
@@ -1067,6 +1078,7 @@ def main():
                 client.help()
             else:
                 print(f"[ERROR] Unknown command: {cmd}")
+        # 3.1 Catch any error from commands not processed
         except Exception as e:
             print(f"[ERROR] {str(e)}")
 

@@ -180,6 +180,16 @@ Username: sinhvien
 Password: <your_ftp_user_password>
 ```
 
+Expected output:
+```
+[INFO] ClamAV agent loaded from config: 146.190.91.115:6789
+ftp> open 146.190.91.115 21
+Username: sinhvien
+Password: 12345678
+Connected to 146.190.91.115:21 as sinhvien
+[OK] 250 Directory successfully changed.
+```
+
 > ✅ If you're testing client and server on the same machine, run:
 > ```bash
 > ftp> testmode on
@@ -191,6 +201,7 @@ Password: <your_ftp_user_password>
 > ftp> testmode off
 > ```
 > This lets the client use its actual LAN IP for active mode.
+> Testmode is off by default.
 
 ### 3. When finished, exit cleanly using:
 
@@ -200,11 +211,83 @@ ftp> quit
 
 ---
 
-## 🔧 Supported Commands & Parameters
+## 🔧 Overview of Commands & Parameters
+
+| Command                        | Description                                          |
+| ------------------------------ | ---------------------------------------------------- |
+| `open <host> [port]`           | Connect to FTP server (default port is 21)           |
+| `close`                        | Disconnect from FTP server                           |
+| `ls`                           | List files and folders on server                     |
+| `cd <dir_name>`                | Change server directory                              |
+| `put <file_path>`              | Upload file to FTP server (scanned by ClamAV)        |
+| `mput <file_pattern>`          | Upload multiple files matching the pattern           |
+| `get` / `recv <file_name>`     | Download file from FTP server                        |
+| `mget <file_pattern>`          | Download multiple files matching the pattern         |
+| `delete <filename>`            | Delete file from FTP server                          |
+| `rename <old_name> <new_name>` | Rename file                                          |
+| `mkdir <dir_name>`             | Create folder                                        |
+| `rmdir <dir_name>`             | Remove folder                                        |
+| `pwd`                          | Show current directory                               |
+| `ascii` / `binary`             | Switch transfer mode                                 |
+| `prompt`                       | Toggle y/n confirmation for `mput` and `mget`        |
+| `passive`                      | Toggle passive/active mode                           |
+| `status`                       | Show connection info                                 |
+| `help`, `?`                    | Show help                                            |
+| `quit`, `bye`                  | Exit the FTP client                                  |
+
+---
+
+## 🔧 Commands & Parameters example usage
 
 ### ✅ `open <host> [port]`
 
 Connect to the FTP server. **This command must be run before using any other commands.**
+
+### ✅ `ls`
+
+List files and folders on server.
+
+Expected output:
+```
+ftp> ls
+-rw-------    1 1000     1000       254293 Aug 12 15:20 Idle.png
+drwx------    3 1000     1000         4096 Jul 23 15:15 NewRecursive
+-rw-------    1 1000     1000       513884 Aug 09 17:44 PhaoPLDC.pdf
+drwx------    2 1000     1000         4096 Aug 09 18:04 Recursive
+drwx------    3 1000     1000         4096 Jul 31 14:04 RecursiveFolder
+-rw-------    1 1000     1000           56 Aug 01 11:38 file_with_txt.txt
+-rw-------    1 1000     1000        81200 Aug 12 08:47 ftp.png
+-rw-------    1 1000     1000       131756 Aug 04 15:05 image.png
+-rw-------    1 1000     1000        83632 Aug 04 15:06 image2.png
+-rw-------    1 1000     1000           64 Aug 08 01:49 renamed_file.txt
+-rw-------    1 1000     1000           64 Aug 12 15:18 safe.txt
+-rw-------    1 1000     1000           64 Jul 23 04:28 safe_document.txt
+-rw-------    1 1000     1000        61807 Aug 09 17:51 testImage.jpg
+-rw-------    1 1000     1000        13395 Aug 09 17:51 testImage2.png
+-rw-------    1 1000     1000         1294 Jul 30 08:15 test_log.txt
+-rw-------    1 1000     1000           13 Aug 09 17:55 text1.txt
+-rw-------    1 1000     1000           64 Aug 09 17:56 text2.txt
+-rw-------    1 1000     1000           64 Aug 09 17:57 text3.txt
+-rw-------    1 1000     1000           62 Jul 30 08:16 todo_tasks.txt
+226 Directory send OK.
+```
+
+---
+
+### ✅ `cd <dir_name>`
+
+Change server directory.
+
+Expected output:
+```
+ftp> cd RecursiveFolder
+[OK] 250 Directory successfully changed.
+ftp> ls
+-rw-------    1 1000     1000     12150994 Jul 31 14:02 NMCNTT-Session0102-Introduction.pptx
+drwx------    2 1000     1000         4096 Jul 31 14:04 test
+-rw-------    1 1000     1000          679 Jul 31 14:03 test2.cpp
+226 Directory send OK.
+```
 
 ---
 
@@ -271,25 +354,6 @@ Download multiple files or folders:
 -   `mget *.jpg target_folder/` → final argument is treated as destination folder if it exists
 
 Supports recursion (e.g., downloading folders and their content), and destination folder can be optionally specified as the last argument.
-
----
-
-### ✅ Other FTP Commands
-
-| Command                        | Description                                          |
-| ------------------------------ | ---------------------------------------------------- |
-| `delete <filename>`            | Delete file from FTP server                          |
-| `rename <old_name> <new_name>` | Rename file                                          |
-| `mkdir <dir_name>`             | Create folder                                        |
-| `rmdir <dir_name>`             | Remove folder                                        |
-| `ls`                           | List files on server                                 |
-| `cd <dir_name>`                | Change server directory                              |
-| `pwd`                          | Show current directory                               |
-| `ascii` / `binary`             | Switch transfer mode                                 |
-| `prompt`                       | Toggle y/n confirmation for `mput` and `mget`        |
-| `passive`                      | Toggle passive/active mode                           |
-| `status`                       | Show connection info                                 |
-| `help`, `?`                    | Show help                                            |
 
 ---
 
