@@ -79,24 +79,6 @@ class RawFTPClient:
         self.clamav_port = None       # Integer: The port number of the ClamAV scanning agent.
                                       # Loaded from config.ini.
 
-    def _spinner_animation(self, stop_event):
-        """
-        Displays a spinning character in the console.
-        This function is meant to be run in a separate thread.
-        """
-        spinner_chars = ['|', '/', '-', '\\']
-        i = 0
-        while not stop_event.is_set():
-            char = spinner_chars[i % len(spinner_chars)]
-            # Use carriage return '\r' to move the cursor to the beginning of the line
-            sys.stdout.write(char + '\b')
-            sys.stdout.flush()
-            time.sleep(0.1)
-            i += 1
-        # Clear the spinner character when done
-        sys.stdout.write(' \b')
-        sys.stdout.flush()
-
     # Method to load the configuration
     def load_config(self):
         """Loads configuration for ClamAV from config.ini file."""
@@ -600,9 +582,13 @@ class RawFTPClient:
             filepath (str): Local path of the file to upload.
             remote_rel_path (str): Relative remote path to store the file.
         """
+        # --- Step 1: Pre-upload checks and validation ---
+        # Kiểm tra xem file cục bộ có tồn tại không
         if not os.path.isfile(filepath):
             print(f"[ERROR] File '{filepath}' does not exist.")
             return
+        
+        # Quét virus file bằng ClamAV trước khi tải lên
         result = self.scan_with_clamav(filepath)
         if result != "OK":
             print(f"[WARNING] Upload aborted. Scan result: {result}")
@@ -839,6 +825,24 @@ class RawFTPClient:
                             continue
                     self.get(target, local_file)
 
+    def _spinner_animation(self, stop_event):
+        """
+        Displays a spinning character in the console.
+        This function is meant to be run in a separate thread.
+        """
+        spinner_chars = ['|', '/', '-', '\\']
+        i = 0
+        while not stop_event.is_set():
+            char = spinner_chars[i % len(spinner_chars)]
+            # Use carriage return '\r' to move the cursor to the beginning of the line
+            sys.stdout.write(char + '\b')
+            sys.stdout.flush()
+            time.sleep(0.1)
+            i += 1
+        # Clear the spinner character when done
+        sys.stdout.write(' \b')
+        sys.stdout.flush()
+
     def scan_with_clamav(self, filepath):
         """Scans a file with ClamAV before upload.
 
@@ -848,46 +852,64 @@ class RawFTPClient:
         Returns:
             str: Scan result string.
         """
+        # --- Step 1: Pre-scan validation ---
+        # Check xem load_config() đọc được IP và port của ClamAV chưa
         if not self.clamav_host:
             return "ERROR: ClamAV agent address is not configured. Please create a valid config.ini file."
 
-        # START progress bar
-        s = None # Define s here to access it in the finally block
+        # --- Step 2: Initialize resources ---
+        # Socket object for connecting to the ClamAV agent.
+        s = None
+        
+        # Thread object for the waiting animation.
         spinner_thread = None
-        stop_spinner = threading.Event() # Event to signal the spinner thread to stop
+        # Event to signal the spinner thread to stop
+        # stop_spinner.set() để ngưng spinner
+        stop_spinner = threading.Event()
 
         try:
+            # --- Step 3: Connect to ClamAV agent and send metadata ---
+            # Lấy metadata để gửi qua ClamAV agent
             filesize = os.path.getsize(filepath)
+            metadata = f"{os.path.basename(filepath)}:{filesize}"
+            
+            # Tạo TCP socket và kết nối đến địa chỉ của ClamAV agent.
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((self.clamav_host, self.clamav_port))
-            metadata = f"{os.path.basename(filepath)}:{filesize}"
+            # Gửi metadata đến ClamAV agent
             s.sendall(metadata.encode())
+            
+            # Chờ nhận xác nhận (acknowledgement) từ agent.
+            # Đọc tối đa 1024 byte dữ liệu từ socket, ack thường nhỏ hơn rất nhiều
             ack = s.recv(1024)
+            # Nếu agent không acknowledge metadata
             if ack != b"META_OK":
                 s.close()
                 return "ERROR: ClamAVAgent did not acknowledge metadata."
             
-            # --- Phase 1: Determinate Progress (Uploading) ---
+            # --- Step 4 (Phase 1): Send file data with a progress bar ---
             bytes_sent = 0
             progress_bar_length = 50
+            
+            # Thông báo bắt đầu gửi file tới ClamAV
             send_pretext = f"Sending to ClamAV: '{os.path.basename(filepath)}':"
-
             sys.stdout.write(send_pretext)
             sys.stdout.flush()
 
+            # Mở file ở chế độ đọc nhị phân.
             with open(filepath, 'rb') as f:
                 while True:
+                    # Đọc BUFFER_SIZE data đến khi đủ file
                     data = f.read(BUFFER_SIZE)
                     if not data:
                         break
                     s.sendall(data)
                     bytes_sent += len(data)
 
-                    # Calculate progress
+                    # Tính toán và hiển thị thanh progress.
                     percent_complete = (bytes_sent / filesize) * 100
                     filled_length = int(progress_bar_length * bytes_sent // filesize)
                     bar = '█' * filled_length + '-' * (progress_bar_length - filled_length)
-                        
                     progress_string = f'\r{send_pretext} |{bar}| {percent_complete:.2f}%'
                     sys.stdout.write(progress_string)
                     sys.stdout.flush()
@@ -895,18 +917,19 @@ class RawFTPClient:
                     # Add a small delay to visualize the progress
                     time.sleep(0.01)
                     
-            # --- Phase 2: Indeterminate Progress (Waiting for Scan) ---
-            # Start the spinner thread
+            # --- Step 5 (Phase 2): Wait for scan result with a spinner animation ---
+            # Sau khi gửi file xong, xuống dòng để bắt đầu hiển thị spinner.
             sys.stdout.write('\n')
+            # Tạo một luồng mới, chạy hàm `_spinner_animation`.
             spinner_thread = threading.Thread(target=self._spinner_animation, args=(stop_spinner,))
             sys.stdout.write("Waiting for scan result: ")
             spinner_thread.start()
 
             # The main thread blocks here, waiting for the server's response
             # The spinner thread continues to run in the background
-
             result = s.recv(1024).decode()
             
+            # --- Step 6: Stop spinner and process the result ---
             # Stop the spinner and print "Done" on the same line.
             if spinner_thread.is_alive():
                 stop_spinner.set()
@@ -938,7 +961,7 @@ class RawFTPClient:
             if spinner_thread and spinner_thread.is_alive():
                 stop_spinner.set()
                 spinner_thread.join()
-
+            # Close the socket connection
             if s:
                 s.close()
 
