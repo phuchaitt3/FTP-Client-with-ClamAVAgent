@@ -37,18 +37,37 @@ debug_logger.propagate = False
 
 class RawFTPClient:
     def __init__(self):
-        self.control_sock = None
-        self.passive_mode = True
-        self.transfer_mode = 'binary'
-        self.prompt = True
-        self.connected = False
+        """
+        Initializes a new RawFTPClient instance.
+        Sets up the initial state and default configurations for the FTP client.
+        """
+        # --- FTP Control Connection Attributes ---
+        self.control_sock = None  # Socket object for the main control connection (commands & responses)
+                                  # It will be set when connected to an FTP server.
+        
+        # --- FTP Transfer Attributes ---
+        self.passive_mode = True  # Boolean flag: True for Passive Mode (client connects to server's data port),
+                                  # False for Active Mode (server connects to client's data port).
+                                  # Passive mode is generally preferred due to firewall/NAT compatibility.
+        self.active_data_listener = None # Socket object for the data connection listener in Active Mode.
+                                          # This socket waits for the FTP server to connect to the client.
+        self.local_test_mode = False  # Boolean flag: If True, forces Active Mode to use 127.0.0.1 (loopback)
+                                      # for its IP address in the PORT command. Useful for local testing
+                                      # without NAT/firewall issues. Defaults to False (uses real IP).
+        
+        self.transfer_mode = 'binary' # String: 'binary' (TYPE I) for all file types,
+                                      # 'ascii' (TYPE A) for text files (handles line endings).
+        self.prompt = True            # Boolean flag: If True, mput/mget commands will prompt for confirmation
+                                      # before transferring each file.
+        self.connected = False        # Boolean flag: True if currently connected and logged into an FTP server,
+                                      # False otherwise.
 
-        self.host = None
-        self.clamav_host = None
-        self.clamav_port = None
-
-        self.active_data_listener = None
-        self.local_test_mode = False  # Mặc định bật chế độ test local (127.0.0.1)
+        # --- Connection Details ---
+        self.host = None              # String: IP address of the currently connected FTP server.
+        self.clamav_host = None       # String: IP address of the ClamAV scanning agent.
+                                      # Loaded from config.ini.
+        self.clamav_port = None       # Integer: The port number of the ClamAV scanning agent.
+                                      # Loaded from config.ini.
 
     def _spinner_animation(self, stop_event):
         """
