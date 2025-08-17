@@ -127,23 +127,8 @@ def main():
             try:
                 # Chương trình sẽ bị chặn đến khi một client thực hiện một yêu cầu kết nối thành công.
                 # Improvement: Sử dụng threading để xử lý nhiều client cùng lúc
-                # conn, addr = s.accept()
-                # handle_client(conn, addr)
                 conn, addr = s.accept()
-                print(f"\nAccepted connection from {addr}")
-                
-                
-                # [1] Tạo một đối tượng luồng mới
-                client_thread = threading.Thread(
-                    target=handle_client, # Hàm mà luồng sẽ chạy
-                    args=(conn, addr)     # Đối số truyền cho hàm đó
-                )
-                
-                # [2] Đặt luồng làm daemon để tự thoát khi chương trình chính dừng
-                client_thread.daemon = True
-
-                # [3] Bắt đầu luồng. Vòng lặp chính không chờ mà tiếp tục ngay.
-                client_thread.start()
+                handle_client(conn, addr)
             except KeyboardInterrupt:
                 print("\nServer is shutting down.")
                 break

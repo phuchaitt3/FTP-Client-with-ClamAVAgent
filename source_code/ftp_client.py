@@ -234,10 +234,12 @@ class RawFTPClient:
         Raises:
             Exception: If neither EPSV nor PASV succeeds in passive mode, or if PORT fails in active mode.
         """
+        # Passive Mode
         if self.passive_mode:
             # --- Modern Approach: Try EPSV first ---
             try:
                 self._send_cmd("EPSV")
+                
                 resp = self._recv_response_blocking()
                 debug_logger.debug(f"EPSV response: {resp}")
 
@@ -259,6 +261,8 @@ class RawFTPClient:
                 print(f"[WARN] EPSV failed: {e}. Trying legacy PASV.")
                 
                 self._send_cmd("PASV")
+                
+                # Decode data-connection ip and port sent from server
                 resp = self._recv_response_blocking()
                 debug_logger.debug(f"[DEBUG] PASV response: {resp}")  # debug thêm
                 if not resp.startswith('227'):
@@ -271,6 +275,8 @@ class RawFTPClient:
                     raise Exception("Invalid PASV address data")
                 ip = '.'.join(numbers[:4])
                 port = (int(numbers[4]) << 8) + int(numbers[5])
+                
+                # Create a connection to the ip and port of server
                 data_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 data_sock.connect((ip, port))
                 return data_sock
@@ -318,6 +324,7 @@ class RawFTPClient:
             resp = self._recv_response_blocking()
             
             # "200 Command okay."
+            # Xác nhận từ server rằng nó đã nhận và hiểu lệnh PORT, và nó biết nơi cần kết nối để thiết lập kênh dữ liệu.
             if not resp.startswith('200'):
                 # Clean up nếu connection không thành công
                 self.active_data_listener.close()
@@ -395,6 +402,7 @@ class RawFTPClient:
                     self.active_data_listener = None
                 return
 
+            # active
             if not self.passive_mode:
                 try:
                     data_sock, _ = self.active_data_listener.accept()
@@ -545,6 +553,10 @@ class RawFTPClient:
             with open(local_path, 'wb') as f:
                 while True:
                     data = data_sock.recv(BUFFER_SIZE)
+                    # - Chuỗi bytes rỗng (b''), điều đó có nghĩa là bên kia của kết nối (tức là FTP server) 
+                    # đã thực hiện lệnh close() trên socket của nó, báo hiệu rằng nó đã gửi tất cả dữ liệu và sẽ không gửi gì thêm nữa.
+                    # - recv() sẽ trả về một chuỗi bytes rỗng (b'') CHỈ VÀ CHỈ KHI bên kia của kết nối đã đóng nửa kết nối gửi của nó 
+                    # (hoặc toàn bộ kết nối). Đây là cách tiêu chuẩn để phát hiện "end of stream" trong TCP.
                     if not data:
                         break
                     if self.transfer_mode == 'ascii':
@@ -609,16 +621,23 @@ class RawFTPClient:
             # Put - Active mode
             else:
                 # Thiết lập kênh Active tới FTP client
+                # Sau khi chạy xong, FTP client đã chuyển sang trạng thái sẵn sàng lắng nghe một kết nối dữ liệu đến từ server. 
+                # Nó đã thông báo cho server biết nơi nó đang lắng nghe, và server cũng đã xác nhận điều đó.
                 self._open_data_connection()
-                # Lệnh này yêu cầu máy chủ tạo hoặc ghi đè một file trên hệ thống của nó với tên là <remote_path> và chuẩn bị nhận dữ liệu cho file đó.
                 # STOR: client gửi data
+                # Lệnh này yêu cầu máy chủ tạo hoặc ghi đè một file trên hệ thống của nó với tên là <remote_path> 
+                # và chuẩn bị nhận dữ liệu cho file đó.
                 self._send_cmd(f"STOR {remote_path}")  # Gửi STOR TRƯỚC khi accept
                 resp = self._recv_response_blocking()
                 if not resp.startswith('150'):
                     print(f"[ERROR] {resp}")
                     return
+                # Chặn thực thi chương trình cho đến khi máy chủ FTP tạo một kết nối đến socket đang lắng nghe của client
                 try:
-                    # Chặn thực thi chương trình cho đến khi máy chủ FTP tạo một kết nối đến socket đang lắng nghe của client
+                    # Trước khi gọi accept(), đã có một socket được gọi là socket lắng nghe (self.active_data_listener). 
+                    # Socket này không dùng để gửi hay nhận dữ liệu. 
+                    # Nhiệm vụ duy nhất của nó là "ngồi chờ" và lắng nghe các yêu cầu kết nối đến từ các máy khác.
+                    # active_data_listener được tạo khi chạy self._open_data_connection()
                     data_sock, _ = self.active_data_listener.accept()
                 # Cơ chế khi chờ quá lâu
                 except socket.timeout:
